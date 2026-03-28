@@ -1,0 +1,163 @@
+{
+  "project": "Cloey Insurance Assistant Storyboard",
+  "customer": {
+    "name": "Jon Mercer",
+    "id": "2026AB"
+  },
+  "assistant": {
+    "name": "Cloey",
+    "primary_traits": [
+      "Smooth",
+      "Confident",
+      "Helpful",
+      "Clear",
+      "Decisive"
+    ]
+  },
+  "scenes": [
+    {
+      "scene_id": 1,
+      "title": "Entry",
+      "context": "User Dashboard",
+      "ux_events": [
+        {
+          "type": "interaction",
+          "action": "cursor moves",
+          "target": "Ask Cloey Button"
+        }
+      ],
+      "interaction": [
+        {
+          "role": "user",
+          "action": "typing",
+          "text": "I want to file a new claim, can you help me wiht that.."
+        }
+      ]
+    },
+    {
+      "scene_id": 2,
+      "title": "Instant Recognition",
+      "Cloey_tone": "smooth, confident",
+      "interaction": [
+        {
+          "role": "Cloey",
+          "text": "Of course \u2014 I can help with that. I found your account under Jon Mercer, ID 2026AB. Should I use this account to continue?"
+        },
+        {
+          "role": "user",
+          "text": "Yes"
+        }
+      ]
+    },
+    {
+      "scene_id": 3,
+      "title": "Context Pull",
+      "visual_effects": "Subtle loading animation (1 sec)",
+      "interaction": [
+        {
+          "role": "Cloey",
+          "text": "Got it. I can see you have 3 active policies: Health, Travel and Auto. Which policy is this for?"
+        },
+        {
+          "role": "user",
+          "text": "Health"
+        }
+      ]
+    },
+    {
+      "scene_id": 4,
+      "title": "Friction Kill Moment",
+      "Cloey_tone": "slight shift, helpful tone",
+      "interaction": [
+        {
+          "role": "Cloey",
+          "text": "Please Upload your bill \u2014 I\u2019ll handle the rest."
+        },
+        {
+          "role": "user",
+          "action": "drag_and_drop_file",
+          "file_type": "bill"
+        }
+      ]
+    },
+    {
+      "scene_id": 5,
+      "title": "AI in Action",
+      "visual_effects": "Quick scan animation over document",
+      "data_points_found": {
+        "expense_type": "Dental treatment",
+        "clinic_name": "Bright Clove",
+        "date_of_expense": "March 10, 2026",
+        "total_expense_amount": "$190"
+      },
+      "interaction": [
+        {
+          "role": "Cloey",
+          "text": "I can see your uploaded bill. Here\u2019s what I found from your bill: \n\nExpense type: Dental treatment. \nClinic Name: Bright Clove \nDate of Expense: March 10, 2026 \nTotal Expense amount: $190 total. \n\nIs this correct information?"
+        },
+        {
+          "role": "user",
+          "text": "Yes"
+        }
+      ]
+    },
+    {
+      "scene_id": 6,
+      "title": "Intelligence Peak",
+      "Cloey_internal_logic": "tiny pause / thinking",
+      "eligibility_check": {
+        "policy": "Silver Plan",
+        "category_limits": {
+          "dental": "$200"
+        },
+        "status": "fully eligible"
+      },
+      "interaction": [
+        {
+          "role": "Cloey",
+          "text": "I matched your policy. You\u2019re covered under Silver Plan. Your dental limit is $200. This claim is fully eligible."
+        }
+      ]
+    },
+    {
+      "scene_id": 8,
+      "title": "Control",
+      "interaction": [
+        {
+          "role": "Cloey",
+          "text": "Can I submit this expense now?"
+        },
+        {
+          "role": "user",
+          "text": "Yes"
+        }
+      ]
+    },
+    {
+      "scene_id": 9,
+      "title": "Resolution",
+      "visual_effects": "Instant confirmation animation",
+      "claim_metadata": {
+        "id": "CLM-10234",
+        "status": "Submitted"
+      },
+      "interaction": [
+        {
+          "role": "Cloey",
+          "text": "Claim Submitted. Your Claim ID: CLM-10234. I\u2019ll track it for you and send you notification as there is any update."
+        }
+      ]
+    },
+    {
+      "scene_id": 10,
+      "title": "Power Close",
+      "Cloey_tone": "slight smile tone",
+      "interaction": [
+        {
+          "role": "Cloey",
+          "text": "I\u2019ve sent a confirmation to john.m@gmail.com."
+        }
+      ]
+    }
+  ]
+}
