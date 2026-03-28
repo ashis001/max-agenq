@@ -49,7 +49,7 @@ export function Sidebar() {
             <img src="/max.png" alt="Max Logo" className="w-full h-full object-contain scale-110" />
           </div>
           <div>
-            <h1 className='text-sm font-black text-slate-900 uppercase tracking-tighter leading-none'>Group Benefitz</h1>
+            <h1 className='text-sm font-black text-slate-900 uppercase tracking-tighter leading-none'>Max Insurance</h1>
           </div>
         </div>
       </div>

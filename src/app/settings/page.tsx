@@ -125,7 +125,7 @@ export default function SettingsPage() {
                                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Brief Biography</label>
                                     <textarea
                                         rows={4}
-                                        defaultValue="Lead administrator for the Group Benefitz enterprise portal. Managing 120+ corporate accounts."
+                                        defaultValue="Lead administrator for the Max Insurance enterprise portal. Managing 120+ corporate accounts."
                                         className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600/10 focus:border-blue-600 transition-all resize-none"
                                     />
                                 </div>

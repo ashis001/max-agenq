@@ -297,7 +297,7 @@ export function SetupStatus({ engine }: { engine: ReturnType<typeof useCorporate
                         transform: 'translate(-50%, -100%)'
                     }}
                 >
-                    <div className="relative flex flex-col items-center animate-Cloey-pointer-float">
+                    <div className="relative flex flex-col items-center animate-Nina-pointer-float">
                         <div className="text-red-500 filter drop-shadow-[0_4px_12px_rgba(239,68,68,0.4)] transform rotate-[225deg]"><MousePointer2 className="w-6 h-6 fill-red-500" /></div>
                         <div className="absolute inset-0 -m-1 rounded-full bg-red-500 animate-ping opacity-20 scale-125" />
                     </div>
@@ -305,12 +305,12 @@ export function SetupStatus({ engine }: { engine: ReturnType<typeof useCorporate
             )}
 
             <style jsx global>{`
-                @keyframes Cloey-pointer-float {
+                @keyframes Nina-pointer-float {
                   0%, 100% { transform: translateY(0); }
                   50% { transform: translateY(-8px); }
                 }
-                .animate-Cloey-pointer-float {
-                  animation: Cloey-pointer-float 1.5s ease-in-out infinite;
+                .animate-Nina-pointer-float {
+                  animation: Nina-pointer-float 1.5s ease-in-out infinite;
                 }
             `}</style>
         </div>

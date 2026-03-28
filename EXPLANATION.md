@@ -21,12 +21,12 @@ If our app didn't exist, the grown-ups would be lost in a desert of messy papers
 
 ---
 
-## 🤖 CHAPTER 2: Meet Cloey, Your Personal Robot Hero
+## 🤖 CHAPTER 2: Meet Nina, Your Personal Robot Hero
 
-In most apps, you're all alone. You have to click buttons and hope you're doing it right. But in **Benefit**, you have **Cloey**.
+In most apps, you're all alone. You have to click buttons and hope you're doing it right. But in **Benefit**, you have **Nina**.
 
 ### Who is she?
-Cloey isn't a person sitting in an office. She is a collection of super-smart "Math Spells" (we call it **AI** or Artificial Intelligence). 
+Nina isn't a person sitting in an office. She is a collection of super-smart "Math Spells" (we call it **AI** or Artificial Intelligence). 
 
 ### What are her Superpowers?
 1. **The Voice of an Angel:** She can take any text on the screen and turn it into a clear, friendly voice. She uses a special "Voice Box" provided by Google (called **Google TTS**).
@@ -47,13 +47,13 @@ This is where the bosses go to see the future. It has:
 - **Recent Activity:** A list of the very last things that happened in the app.
 
 ### 🏢 Corporate Customers (The Factory)
-This is where the magic happens! When a big company (like a toy factory or a space agency) wants to join us, we go here. Cloey spends most of her time here because there are lots of boxes to fill!
+This is where the magic happens! When a big company (like a toy factory or a space agency) wants to join us, we go here. Nina spends most of her time here because there are lots of boxes to fill!
 
 ### 👥 Members (The People Page)
 This is a giant list of every single person using the app. You can search for names like searching for a book in a library.
 
 ### 🩺 Claims (The Doctor’s Note)
-When someone goes to the doctor, they come here to tell the story of what happened. Cloey helps them fill out the form so they can get their money back quickly.
+When someone goes to the doctor, they come here to tell the story of what happened. Nina helps them fill out the form so they can get their money back quickly.
 
 ---
 
@@ -61,12 +61,12 @@ When someone goes to the doctor, they come here to tell the story of what happen
 
 When you’re in the **Corporate Customers** area, you'll see lots of boxes. Grown-ups call these "Input Fields." I call them **Magic Pockets**.
 
-### How Cloey fills a Magic Pocket:
-1. **The Call:** Cloey’s brain says "Okay, next pocket is the COMPANY NAME!"
+### How Nina fills a Magic Pocket:
+1. **The Call:** Nina’s brain says "Okay, next pocket is the COMPANY NAME!"
 2. **The Highlighter:** She puts a glowing blue border around the box. It looks like the box is charging up with electricity!
 3. **The Hover:** Her red arrow flies over and stays there.
-4. **The Whisper:** Cloey says, "Please type the name of the company here."
-5. **The Mystery Typing:** Suddenly, letters start appearing in the box: *T-e-c-h-F-l-o-w...* It looks like a ghost is typing, but it’s actually just Cloey!
+4. **The Whisper:** Nina says, "Please type the name of the company here."
+5. **The Mystery Typing:** Suddenly, letters start appearing in the box: *T-e-c-h-F-l-o-w...* It looks like a ghost is typing, but it’s actually just Nina!
 
 ---
 
@@ -83,7 +83,7 @@ It’s like a hawk or an eagle watching its target. No matter how much the targe
 
 ---
 
-## 🧪 CHAPTER 6: Inside Cloey’s Kitchen (The Ingredients)
+## 🧪 CHAPTER 6: Inside Nina’s Kitchen (The Ingredients)
 
 If you were to peek inside the computer cords, you would see the ingredients we used to bake this app cake.
 
@@ -100,12 +100,12 @@ Sometimes programmers make mistakes (we’re only human!). TypeScript is like a 
 
 ## 🗣️ CHAPTER 7: The Right Panel (The Secret Base)
 
-On the right side of the screen, there is a panel that slides out. This is Cloey’s **Communication Tower**.
+On the right side of the screen, there is a panel that slides out. This is Nina’s **Communication Tower**.
 
 ### Why is it there?
-Sometimes Cloey wants to talk to you without interrupting your work.
+Sometimes Nina wants to talk to you without interrupting your work.
 - **The Chat Bubble:** You can see her messages here.
-- **The Listening Ear:** Cloey can listen to your voice! If you talk into the microphone, she understands you.
+- **The Listening Ear:** Nina can listen to your voice! If you talk into the microphone, she understands you.
 - **The Resizer:** You can grab the edge of this panel and make it bigger or smaller, just like resizing a window in a house.
 
 ---
@@ -119,16 +119,16 @@ When we set up a new company, we have to beat **6 Levels**.
 3. **Level 3: The Plan Picker.** We pick the actual health plans (like "The Dental Dragon" or "The Eye Eagle").
 4. **Level 4: Setup Status.** We check our progress bar to see if we're winning.
 5. **Level 5: The Invite.** We send magic emails to the company bosses.
-6. **Level 6: Success!** Cloey throws digital confetti and the company is officially live!
+6. **Level 6: Success!** Nina throws digital confetti and the company is officially live!
 
 ---
 
 ## 🛑 CHAPTER 9: The Safety Brake (Stopping the Robot)
 
-What happens if Cloey goes crazy and starts typing things you don't want? Don't worry, we have a **Safety Brake**.
+What happens if Nina goes crazy and starts typing things you don't want? Don't worry, we have a **Safety Brake**.
 
 Inside the code, there is a rule: **"If the user says stop, stop everything immediately!"**
-Every time Cloey takes a step, she checks to see if the user clicked the "Exit" button or closed the chat. If they did, she stops mid-character and goes back to her sleep mode. 
+Every time Nina takes a step, she checks to see if the user clicked the "Exit" button or closed the chat. If they did, she stops mid-character and goes back to her sleep mode. 
 
 ---
 
@@ -136,7 +136,7 @@ Every time Cloey takes a step, she checks to see if the user clicked the "Exit" 
 
 At the end of the day, all these buttons and robots are here for one reason: **To help people.**
 
-When a person gets hurt or sick, they shouldn't have to worry about complicated computer screens. They should be able to click a button, talk to Cloey, and get the help they need. 
+When a person gets hurt or sick, they shouldn't have to worry about complicated computer screens. They should be able to click a button, talk to Nina, and get the help they need. 
 
 We use the best technology in the world (like **Google**, **Vite**, and **Next.js**) to make sure the app never crashes and always stays fast.
 
@@ -157,9 +157,9 @@ We use the best technology in the world (like **Google**, **Vite**, and **Next.j
 You have reached the end of the Great Guide! You now know more about the Benefit project than most grown-ups. 
 
 Remember:
-- **Cloey** is your friend.
+- **Nina** is your friend.
 - **The Red Arrow** is your guide.
 - **The App** is a giant safety net for the world.
 
-Thank you for exploring with me! If you have more questions, just ask Cloey—she's always listening! 🤖✨
+Thank you for exploring with me! If you have more questions, just ask Nina—she's always listening! 🤖✨
 

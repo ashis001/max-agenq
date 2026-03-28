@@ -82,7 +82,7 @@ export function TierTable({ engine }: { engine: ReturnType<typeof useCorporateEn
             const runGuide = async () => {
                 try {
                     hasStartedRef.current = true;
-                    // Ensure Cloey is ready
+                    // Ensure Nina is ready
                     setIsWorkflowActive(true);
                     isWorkflowActiveRef.current = true;
 
@@ -311,7 +311,7 @@ export function TierTable({ engine }: { engine: ReturnType<typeof useCorporateEn
                     }}
                     className="transition-all duration-500 ease-in-out"
                 >
-                    <div className="relative flex flex-col items-center animate-Cloey-pointer-float">
+                    <div className="relative flex flex-col items-center animate-Nina-pointer-float">
                         <div className="text-red-500 filter drop-shadow-[0_4px_12px_rgba(239,68,68,0.4)] transform rotate-[225deg]">
                             <MousePointer2 className="w-6 h-6 fill-red-500" />
                         </div>
@@ -470,12 +470,12 @@ export function TierTable({ engine }: { engine: ReturnType<typeof useCorporateEn
                 </button>
             </div>
             <style jsx global>{`
-                @keyframes Cloey-pointer-float {
+                @keyframes Nina-pointer-float {
                   0%, 100% { transform: translateY(0); }
                   50% { transform: translateY(-8px); }
                 }
-                .animate-Cloey-pointer-float {
-                  animation: Cloey-pointer-float 1.5s ease-in-out infinite;
+                .animate-Nina-pointer-float {
+                  animation: Nina-pointer-float 1.5s ease-in-out infinite;
                 }
             `}</style>
         </div>

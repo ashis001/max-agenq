@@ -52,7 +52,7 @@ export default function HelpCenterPage() {
                             <Sparkles className="w-3 h-3" />
                             How can we help?
                         </div>
-                        <h1 className="text-4xl font-black text-white tracking-tight">Group Benefitz Help Center</h1>
+                        <h1 className="text-4xl font-black text-white tracking-tight">Max Insurance Help Center</h1>
                         <p className="text-blue-200/70 text-sm font-medium">Search our documentation or contact our 24/7 support team</p>
 
                         <div className="relative mt-8">

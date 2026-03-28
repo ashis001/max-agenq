@@ -396,7 +396,7 @@ export default function ClaimsPage() {
                             transform: 'translate(-50%, -100%)'
                         }}
                     >
-                        <div className="relative flex flex-col items-center animate-Cloey-pointer-float">
+                        <div className="relative flex flex-col items-center animate-Nina-pointer-float">
                             <div className="text-red-500 filter drop-shadow-[0_4px_12px_rgba(239,68,68,0.4)] transform rotate-[225deg]">
                                 <MousePointer2 className="w-8 h-8 fill-red-500" />
                             </div>
@@ -426,7 +426,7 @@ export default function ClaimsPage() {
                                 onClick={toggleChat}
                                 className="flex items-center gap-2 px-5 py-2.5 bg-[#0a1e3b] text-white rounded-xl shadow-lg shadow-blue-900/20 hover:shadow-blue-900/40 transition-all hover:-translate-y-0.5 font-black text-[11px] uppercase tracking-wider">
                                 <Sparkles className="w-4 h-4 text-blue-400" />
-                                Ask Cloey
+                                Ask Nina
                             </button>
                         </div>
                     </div>
@@ -855,8 +855,8 @@ export default function ClaimsPage() {
 
             {/* STEP 1: Select Insurance Type popup - Rendered outside main for full viewport coverage */}
             {step === 1 && (
-                <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-slate-900/60 backdrop-blur animate-Cloey-fade-in px-8">
-                    <div className="bg-white rounded-[40px] shadow-[0_32px_80px_rgba(0,0,0,0.4)] border border-slate-200 w-full max-w-5xl relative animate-Cloey-scale-in overflow-hidden">
+                <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-slate-900/60 backdrop-blur animate-Nina-fade-in px-8">
+                    <div className="bg-white rounded-[40px] shadow-[0_32px_80px_rgba(0,0,0,0.4)] border border-slate-200 w-full max-w-5xl relative animate-Nina-scale-in overflow-hidden">
 
                         {/* Professional Theme Header */}
                         <div className="bg-[#0a1e3b] px-8 py-5 flex items-center justify-between">
@@ -874,7 +874,7 @@ export default function ClaimsPage() {
                             </button>
                         </div>
 
-                        <div className="p-12 animate-Cloey-fade-in-up">
+                        <div className="p-12 animate-Nina-fade-in-up">
                             <div className="text-center mb-12">
                                 <h3 className="text-3xl font-black text-slate-900 mb-2 tracking-tight">What are you claiming for?</h3>
                                 <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">Select your service category</p>
@@ -916,28 +916,28 @@ export default function ClaimsPage() {
             )}
 
             <style jsx global>{`
-                @keyframes Cloey-fade-in { from { opacity: 0; } to { opacity: 1; } }
-                @keyframes Cloey-scale-in {
+                @keyframes Nina-fade-in { from { opacity: 0; } to { opacity: 1; } }
+                @keyframes Nina-scale-in {
                     from { transform: translateY(30px) scale(0.9); opacity: 0; }
                     to { transform: translateY(0) scale(1); opacity: 1; }
                 }
-                @keyframes Cloey-fade-in-up {
+                @keyframes Nina-fade-in-up {
                     from { transform: translateY(15px); opacity: 0; }
                     to { transform: translateY(0); opacity: 1; }
                 }
 
-                .animate-Cloey-fade-in { animation: Cloey-fade-in 0.6s ease-out forwards; }
-                .animate-Cloey-scale-in { animation: Cloey-scale-in 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-                .animate-Cloey-fade-in-up { 
-                    animation: Cloey-fade-in-up 0.8s ease-out 0.2s forwards; 
+                .animate-Nina-fade-in { animation: Nina-fade-in 0.6s ease-out forwards; }
+                .animate-Nina-scale-in { animation: Nina-scale-in 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+                .animate-Nina-fade-in-up { 
+                    animation: Nina-fade-in-up 0.8s ease-out 0.2s forwards; 
                     opacity: 0;
                 }
 
-                @keyframes Cloey-pointer-float {
+                @keyframes Nina-pointer-float {
                     0%, 100% { transform: translateY(0); }
                     50% { transform: translateY(-8px); }
                 }
-                .animate-Cloey-pointer-float { animation: Cloey-pointer-float 1.5s ease-in-out infinite; }
+                .animate-Nina-pointer-float { animation: Nina-pointer-float 1.5s ease-in-out infinite; }
                 @keyframes slide-up { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
                 .animate-slide-up { animation: slide-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
                 @keyframes card-entrance { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }

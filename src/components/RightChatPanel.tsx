@@ -71,7 +71,7 @@ export default function RightChatPanel() {
     const [isListening, setIsListening] = useState(false);
     const [isVoiceMode, setIsVoiceMode] = useState(false); // Persistent voice mode
     const [pendingContext, setPendingContext] = useState<string | null>(null); // NEW: Track conversational state
-    const [CloeyStep, setCloeyStep] = useState<number>(0); // NEW: Track Cloey Storyboard progress
+    const [NinaStep, setNinaStep] = useState<number>(0); // NEW: Track Nina Storyboard progress
 
     // Dragging State
     const [position, setPosition] = useState({ x: 0, y: 0 }); // Controlled by layout effect
@@ -406,8 +406,8 @@ export default function RightChatPanel() {
             // CASE A: Opened via Top Bar (or any direct external trigger)
             if (externalMessage) {
                 const timer = setTimeout(async () => {
-                    const isStandardGreeting = externalMessage.toLowerCase().includes("hi, i’m Cloey") ||
-                        externalMessage.toLowerCase().includes("hi, i'm Cloey") ||
+                    const isStandardGreeting = externalMessage.toLowerCase().includes("hi, i’m Nina") ||
+                        externalMessage.toLowerCase().includes("hi, i'm Nina") ||
                         externalMessage.toLowerCase().includes("hi, i’m max") ||
                         externalMessage.toLowerCase().includes("hi, i'm max");
                     const isIntroQuestion = externalMessage.includes("What would you like to do today?");
@@ -421,7 +421,7 @@ export default function RightChatPanel() {
                     if (isIntroQuestion) {
                         const hiddenGreeting: Message = {
                             id: "0",
-                            text: "Hi, I'm **Cloey**. Your Assistant. Ask me anything",
+                            text: "Hi, I'm **Nina**. Your Assistant. Ask me anything",
                             sender: "assistant",
                             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                         };
@@ -468,7 +468,7 @@ export default function RightChatPanel() {
             else if (messages.length === 0) {
                 const initialGreeting: Message = {
                     id: "1",
-                    text: "Hi, I'm **Cloey**. Your Assistant. Ask me anything",
+                    text: "Hi, I'm **Nina**. Your Assistant. Ask me anything",
                     sender: "assistant",
                     timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                 };
@@ -506,7 +506,7 @@ export default function RightChatPanel() {
         setMessages([
             {
                 id: "1",
-                text: "Hi, I'm **Cloey**. Your Assistant. Ask me anything",
+                text: "Hi, I'm **Nina**. Your Assistant. Ask me anything",
                 sender: "assistant",
                 timestamp: new Date().toLocaleTimeString([], {
                     hour: "2-digit",
@@ -514,7 +514,7 @@ export default function RightChatPanel() {
                 }),
             },
         ]);
-        setCloeyStep(0);
+        setNinaStep(0);
         setPendingContext(null);
         setInputValue("");
         setIsTyping(false);
@@ -650,9 +650,9 @@ export default function RightChatPanel() {
         };
         setMessages((prev) => [...prev, userMsg]);
 
-        // If we are in the Cloey storyboard flow waiting for a bill (Scene 4)
-        if (CloeyStep === 3) {
-            handleSend("Uploaded bill"); // Trigger next step in Cloey flow via send logic
+        // If we are in the Nina storyboard flow waiting for a bill (Scene 4)
+        if (NinaStep === 3) {
+            handleSend("Uploaded bill"); // Trigger next step in Nina flow via send logic
         } else {
             setIsTyping(true);
             setTimeout(async () => {
@@ -705,7 +705,7 @@ export default function RightChatPanel() {
             const corporates = await fetchAllCorporates();
             const query = textToSend.toLowerCase().trim();
 
-            // --- STORYBOARD: Cloey CLAIM FLOW ---
+            // --- STORYBOARD: Nina CLAIM FLOW ---
             const claimTriggers = [
                 "i want to file a claim",
                 "i want to report a claim",
@@ -716,15 +716,15 @@ export default function RightChatPanel() {
                 "claim"
             ];
             if (query.includes("claim") || query.includes("can you help me wiht that")) {
-                setCloeyStep(1);
+                setNinaStep(1);
                 setIsTyping(false);
                 await streamMessage("Of course \u2014 I can help with that. I found your account under **Jon Mercer**, ID **2026AB**. Should I use this account to continue?", "assistant");
                 return;
             }
 
-            if (CloeyStep === 1) { // Scene 2 -> Scene 3
+            if (NinaStep === 1) { // Scene 2 -> Scene 3
                 if (query.includes("yes") || query.includes("yep") || query.includes("sure")) {
-                    setCloeyStep(2);
+                    setNinaStep(2);
                     setIsTyping(false);
                     setIsTyping(true);
                     await new Promise(r => setTimeout(r, 1000));
@@ -734,17 +734,17 @@ export default function RightChatPanel() {
                 }
             }
 
-            if (CloeyStep === 2) { // Scene 3 -> Scene 4
+            if (NinaStep === 2) { // Scene 3 -> Scene 4
                 if (query.includes("health")) {
-                    setCloeyStep(3);
+                    setNinaStep(3);
                     setIsTyping(false);
                     await streamMessage("Please Upload your bill \u2014 I\u2019ll handle the rest.", "assistant");
                     return;
                 }
             }
 
-            if (CloeyStep === 3) { // Scene 4 -> Scene 5
-                setCloeyStep(4);
+            if (NinaStep === 3) { // Scene 4 -> Scene 5
+                setNinaStep(4);
                 setIsTyping(true);
                 await new Promise(r => setTimeout(r, 1500));
                 setIsTyping(false);
@@ -752,9 +752,9 @@ export default function RightChatPanel() {
                 return;
             }
 
-            if (CloeyStep === 4) { // Scene 5 -> Scene 6/7/8
+            if (NinaStep === 4) { // Scene 5 -> Scene 6/7/8
                 if (query.includes("yes") || query.includes("yep") || query.includes("correct") || query.includes("it is")) {
-                    setCloeyStep(5);
+                    setNinaStep(5);
                     setIsTyping(true);
                     await new Promise(r => setTimeout(r, 800));
                     setIsTyping(false);
@@ -765,24 +765,24 @@ export default function RightChatPanel() {
                 }
             }
 
-            if (CloeyStep === 5) { // Scene 8 -> Scene 9/10
+            if (NinaStep === 5) { // Scene 8 -> Scene 9/10
                 if (query.includes("yes") || query.includes("yep") || query.includes("do it") || query.includes("submit")) {
-                    setCloeyStep(0);
+                    setNinaStep(0);
                     setIsTyping(true);
                     await new Promise(r => setTimeout(r, 500));
                     setIsTyping(false);
                     setSubmittedClaimId("CLM-10234");
                     router.push("/claims");
-                    
+
                     // Clear any typing state before starting the final sequence
                     setIsTyping(false);
-                    
+
                     // 1. Submit Confirmation
                     await streamMessage("Claim Submitted. Your **Claim ID: CLM-10234**. I\u2019ll track it for you and send you notification as there is any update.", "assistant");
-                    
+
                     // 2. Small Pause
                     await new Promise(r => setTimeout(r, 1500));
-                    
+
                     // 3. Email Update
                     await streamMessage("I\u2019ve sent a confirmation to **john.m@gmail.com**.", "assistant");
                     return;
@@ -830,7 +830,7 @@ export default function RightChatPanel() {
 
             if (query === "hi" || query === "hello") {
                 setIsTyping(false);
-                await streamMessage("Hi I am Cloey, I am here to assist you.", "assistant");
+                await streamMessage("Hi I am Nina, I am here to assist you.", "assistant");
                 return;
             }
 
@@ -1017,7 +1017,8 @@ export default function RightChatPanel() {
                         )}>
                             <img
                                 alt='Voice Assistant'
-                                src='https://cdnstaticfiles.blob.core.windows.net/img/1770617819808_cloye-agent-face.jpg'
+                                // src='https://cdnstaticfiles.blob.core.windows.net/img/1770617819808_cloye-agent-face.jpg'
+                                src="https://cdnstaticfiles.blob.core.windows.net/cdnstaticfiles/agent_images/nina.jpeg"
                                 className='w-full h-full rounded-full object-cover object-top'
                             />
                         </div>
@@ -1038,7 +1039,7 @@ export default function RightChatPanel() {
                     </div>
                     <div>
                         <h3 className='text-[#1e3a5f] font-bold text-sm tracking-tight'>
-                            Cloey
+                            Nina
                         </h3>
 
                         {(isSpeaking || isListening) && (
@@ -1218,7 +1219,7 @@ export default function RightChatPanel() {
                                                                 {part}
                                                             </strong>
                                                         ) : (
-                                                            part.replace(/Cloey/g, "Cloey")
+                                                            part.replace(/Nina/g, "Nina")
                                                         )
                                                     )}
                                             </React.Fragment>
@@ -1352,7 +1353,7 @@ export default function RightChatPanel() {
                             </button>
                             <input
                                 type='text'
-                                placeholder={isListening ? "Listening..." : "Ask Cloey something..."}
+                                placeholder={isListening ? "Listening..." : "Ask Nina something..."}
 
                                 value={inputValue}
                                 onChange={(e) => setInputValue(e.target.value)}

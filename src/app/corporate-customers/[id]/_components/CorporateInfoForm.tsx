@@ -954,7 +954,7 @@ export function CorporateInfoForm({ engine }: { engine: ReturnType<typeof useCor
                         transform: 'translate(-50%, -100%)'
                     }}
                 >
-                    <div className="relative flex flex-col items-center animate-Cloey-pointer-float">
+                    <div className="relative flex flex-col items-center animate-Nina-pointer-float">
                         {/* The Sharp Pointer Icon - Rotated to point directly down */}
                         <div className="text-red-500 filter drop-shadow-[0_4px_12px_rgba(239,68,68,0.4)] transform rotate-[225deg]">
                             <MousePointer2 className="w-6 h-6 fill-red-500" />
@@ -967,12 +967,12 @@ export function CorporateInfoForm({ engine }: { engine: ReturnType<typeof useCor
             )}
 
             <style jsx global>{`
-                @keyframes Cloey-pointer-float {
+                @keyframes Nina-pointer-float {
                   0%, 100% { transform: translateY(0); }
                   50% { transform: translateY(-8px); }
                 }
-                .animate-Cloey-pointer-float {
-                  animation: Cloey-pointer-float 1.5s ease-in-out infinite;
+                .animate-Nina-pointer-float {
+                  animation: Nina-pointer-float 1.5s ease-in-out infinite;
                 }
             `}</style>
         </form>

@@ -152,7 +152,7 @@ export default function LoginPage() {
                 <img src="/max.png" alt="Max Logo" className="w-full h-full object-contain" />
               </div>
               <div className="text-center">
-                <h1 className="text-3xl font-extrabold text-white tracking-tighter">Group Benefitz</h1>
+                <h1 className="text-3xl font-extrabold text-white tracking-tighter">Max Insurance</h1>
                 <p className="text-[12px] text-blue-300 font-bold uppercase tracking-[0.3em] mt-1">Enterprise Secured</p>
               </div>
             </div>
@@ -226,7 +226,7 @@ export default function LoginPage() {
                 />
               </div>
             </div>
- 
+
             <div className="space-y-2 animate-slide-right [animation-delay:300ms]">
               <div className="flex items-center justify-between ml-1">
                 <label className="text-sm font-bold text-slate-700">Password</label>

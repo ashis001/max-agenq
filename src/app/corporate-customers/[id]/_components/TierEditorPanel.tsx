@@ -34,7 +34,7 @@ interface PlanCategory {
 
 // Global Products Lists
 const MENTAL_HEALTH_PRODUCTS: Product[] = [
-    { id: "eap3", name: "Group Benefitz EAP 3.0", category: "Mental Health" },
+    { id: "eap3", name: "Max Insurance EAP 3.0", category: "Mental Health" },
     { id: "cw1", name: "Complete Wellness", category: "Mental Health" },
     { id: "dp_core", name: "Dialogue Primary Care", category: "Health" },
     { id: "db_core", name: "Dialogue Basic EAP", category: "Mental Health" },
@@ -66,7 +66,7 @@ const PLAN_CATEGORIES = {
         },
         {
             id: "cm2", name: "Emergency Travel Protection", products: [
-                { id: "tr1", name: "Group Benefitz Travel", category: "Travel", hasVariants: true, variants: VARIANTS_S_C_F }
+                { id: "tr1", name: "Max Insurance Travel", category: "Travel", hasVariants: true, variants: VARIANTS_S_C_F }
             ]
         }
     ],
@@ -94,7 +94,7 @@ const PLAN_CATEGORIES = {
                 { id: "sub_teap", name: "Test EAP 4", products: [{ id: "teap4", name: "Test EAP 4", category: "EAP" }] },
                 { id: "sub_prov", name: "Provincial Health Replacement Plan", products: [{ id: "phrp", name: "Provincial Health Replacement Plan", category: "Health" }] },
                 { id: "sub_cat", name: "Catastrophic Medication", products: [{ id: "hcd_core", name: "High-Cost Drugs", category: "Drugs", hasVariants: true, variants: ["Single", "Family"] }] },
-                { id: "sub_trav", name: "Emergency Travel Protection", products: [{ id: "gt_core", name: "Group Benefitz Travel", category: "Travel" }] }
+                { id: "sub_trav", name: "Emergency Travel Protection", products: [{ id: "gt_core", name: "Max Insurance Travel", category: "Travel" }] }
             ]
         },
         {
@@ -526,7 +526,7 @@ export function TierEditorPanel({
 
                     await delay(800);
 
-                    // STEP: Select "Group Benefitz Travel" with Single variant
+                    // STEP: Select "Max Insurance Travel" with Single variant
                     await fillField({
                         id: "plan-tr1-single-check",
                         speech: TIER_VOICE_MESSAGES.SELECT_TRAVEL_PLAN,
@@ -1376,7 +1376,7 @@ export function TierEditorPanel({
                     <button onClick={onCancel} className="bg-white border border-slate-300 rounded px-8 py-2 text-[11px] font-black text-[#1e3a5f] hover:bg-slate-50 hover:border-slate-400 transition-all shadow-sm uppercase tracking-wide">Close</button>
                 </div>
 
-                {/* Guide Pointer (Cloey's Mouse) - Outside scroll container to stay on top of footer */}
+                {/* Guide Pointer (Nina's Mouse) - Outside scroll container to stay on top of footer */}
                 {pointerPos && activeFillingField && (
                     <div
                         style={{
@@ -1389,7 +1389,7 @@ export function TierEditorPanel({
                         }}
                         className="transition-all duration-300 ease-out"
                     >
-                        <div className="relative flex flex-col items-center animate-Cloey-pointer-float">
+                        <div className="relative flex flex-col items-center animate-Nina-pointer-float">
                             <div className="text-red-500 filter drop-shadow-[0_4px_12px_rgba(239,68,68,0.4)] transform rotate-[225deg]">
                                 <MousePointer2 className="w-6 h-6 fill-red-500" />
                             </div>
@@ -1399,12 +1399,12 @@ export function TierEditorPanel({
                 )}
             </div>
             <style jsx global>{`
-                @keyframes Cloey-pointer-float {
+                @keyframes Nina-pointer-float {
                   0%, 100% { transform: translateY(0); }
                   50% { transform: translateY(-8px); }
                 }
-                .animate-Cloey-pointer-float {
-                  animation: Cloey-pointer-float 1.5s ease-in-out infinite;
+                .animate-Nina-pointer-float {
+                  animation: Nina-pointer-float 1.5s ease-in-out infinite;
                 }
             `}</style>
         </div>

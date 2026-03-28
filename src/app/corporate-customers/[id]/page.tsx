@@ -69,7 +69,7 @@ export default function CorporatePage({ params }: { params: { id: string } }) {
                             onClick={toggleChat}
                             className="flex items-center gap-2 px-5 py-2.5 bg-[#0a1e3b] text-white rounded-xl shadow-lg shadow-blue-900/20 hover:shadow-indigo-900/40 transition-all hover:-translate-y-0.5 font-black text-[11px] uppercase tracking-wider group">
                             <Sparkles className="w-4 h-4 text-blue-400 group-hover:rotate-12 transition-transform" />
-                            Ask Cloey
+                            Ask Nina
                         </button>
                     </div>
                 </header>

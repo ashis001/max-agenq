@@ -61,8 +61,8 @@ export const SAMPLE_CORPORATE_1: Corporate = {
             enableVoluntaryPlans: true,
             plans: {
                 corporate: [
-                    { id: "eap3", name: "Group Benefitz EAP 3.0", category: "Mental Health", type: "CORPORATE", headcount: 12 },
-                    { id: "tr1", name: "Group Benefitz Travel", category: "Travel", type: "CORPORATE", variant: "Family", headcount: 12 }
+                    { id: "eap3", name: "Max Insurance EAP 3.0", category: "Mental Health", type: "CORPORATE", headcount: 12 },
+                    { id: "tr1", name: "Max Insurance Travel", category: "Travel", type: "CORPORATE", variant: "Family", headcount: 12 }
                 ],
                 core: [
                     { id: "cx1", name: "Complete Executive Care", category: "Health", type: "CORE", headcount: 12 },

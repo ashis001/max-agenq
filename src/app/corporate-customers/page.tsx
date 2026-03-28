@@ -101,10 +101,10 @@ export default function CorporateListingPage() {
                     </div>
                     <div className="flex items-center gap-3">
                         <button
-                            onClick={() => openChat("Hi, I’m Cloey. Your Assistant. Ask me anything")}
+                            onClick={() => openChat("Hi, I’m Nina. Your Assistant. Ask me anything")}
                             className="flex items-center gap-2 px-5 py-2.5 bg-[#0a1e3b] text-white rounded-xl shadow-lg shadow-blue-900/20 hover:shadow-blue-900/40 transition-all hover:-translate-y-0.5 font-black text-[11px] uppercase tracking-wider">
                             <Sparkles className="w-4 h-4 text-blue-400" />
-                            Ask Cloey
+                            Ask Nina
                         </button>
                     </div>
                 </header>
