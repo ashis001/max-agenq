@@ -20,7 +20,11 @@ import {
     Plus,
     Clock,
     History,
-    Sidebar as SidebarIcon
+    Sidebar as SidebarIcon,
+    ThumbsUp,
+    ThumbsDown,
+    ChevronLeft,
+    ChevronRight
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useChat } from "@/context/ChatContext";
@@ -102,6 +106,18 @@ export default function RightChatPanel() {
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const isInterruptedRef = useRef(false);
     const activeMessageTextRef = useRef<string | null>(null);
+    const [messageRatings, setMessageRatings] = useState<Record<string, 'like' | 'dislike'>>({});
+
+    const toggleRating = (id: string, rating: 'like' | 'dislike') => {
+        setMessageRatings(prev => {
+            if (prev[id] === rating) {
+                const { [id]: _, ...rest } = prev;
+                return rest;
+            }
+            return { ...prev, [id]: rating };
+        });
+    };
+
     const [guideTargetRect, setGuideTargetRect] = useState<{ top: number, left: number, width: number, height: number } | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -988,6 +1004,21 @@ export default function RightChatPanel() {
                     : "width 300ms cubic-bezier(0.16, 1, 0.3, 1), transform 300ms ease-in-out, left 300ms ease-in-out, top 300ms ease-in-out, border-color 300ms, box-shadow 300ms",
             }}>
 
+            {/* Expand/Collapse Toggle - Left Border Center */}
+            <button
+                onClick={() => {
+                    if (isFloating) setIsFloating(false);
+                    setIsExpanded(!isExpanded);
+                }}
+                className={clsx(
+                    "absolute -left-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-white/80 backdrop-blur-md text-[#1e3a5f] flex items-center justify-center shadow-md hover:bg-white hover:scale-110 active:scale-95 transition-all z-[10001] border border-slate-200",
+                    !isOpen && "hidden"
+                )}
+                title={isExpanded ? "Collapse" : "Expand chat"}
+            >
+                {isExpanded ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
+            </button>
+
             {/* Resize Handle - Only in Sidebar Mode */}
             {!isFloating && (
                 <div
@@ -1313,6 +1344,35 @@ export default function RightChatPanel() {
                                         </div>
                                     )}
                                 </div>
+
+                                {msg.sender === "assistant" && msg.text && (
+                                    <div className="flex items-center gap-2 mt-1 px-1">
+                                        <button
+                                            onClick={() => toggleRating(msg.id, 'like')}
+                                            className={clsx(
+                                                "p-1.5 rounded-md transition-all hover:bg-slate-100 group",
+                                                messageRatings[msg.id] === 'like' ? "text-blue-600 bg-blue-50" : "text-slate-400"
+                                            )}
+                                        >
+                                            <ThumbsUp size={14} className={clsx(
+                                                "transition-transform active:scale-90",
+                                                messageRatings[msg.id] === 'like' ? "fill-blue-600" : "group-hover:text-slate-500"
+                                            )} />
+                                        </button>
+                                        <button
+                                            onClick={() => toggleRating(msg.id, 'dislike')}
+                                            className={clsx(
+                                                "p-1.5 rounded-md transition-all hover:bg-slate-100 group",
+                                                messageRatings[msg.id] === 'dislike' ? "text-red-600 bg-red-50" : "text-slate-400"
+                                            )}
+                                        >
+                                            <ThumbsDown size={14} className={clsx(
+                                                "transition-transform active:scale-90",
+                                                messageRatings[msg.id] === 'dislike' ? "fill-red-600" : "group-hover:text-slate-500"
+                                            )} />
+                                        </button>
+                                    </div>
+                                )}
                                 {/* Metadata removed as per user request */}
                             </div>
                         ))}
