@@ -41,8 +41,8 @@ export default function Agent() {
       console.log("🎉 AgenQ SDK detected → mounting");
 
       window.AGENQ.render({
-        agentId: "65206eb7-e156-42fc-b42c-2ee88902b1ef",
-        projectId: "9c21ed2d-8109-4c59-aa6d-6001ff2e5159",
+        agentId: "eb35f9fc-6f2d-48aa-925d-a133d7030876",
+        projectId: "d33341f4-f727-417f-a62b-fb7a1e617f2c",
         customerCode: "SUPER-USER",
       });
 
@@ -65,7 +65,7 @@ export default function Agent() {
       <div id='agenq-root' ref={slotRef} />
       <Script
         src={
-          "https://cdnstaticfiles.blob.core.windows.net/cdn/clientsdk/agenq-client-sdk.js"
+          "https://cdn.aws.agenq.com/agenq-client-sdk.js"
         }
         strategy='afterInteractive'
       />
