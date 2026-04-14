@@ -24,12 +24,21 @@ export default function Agent() {
   const mounted = useRef(false);
 
   useEffect(() => {
+    // Timeout fallback: if the SDK doesn't load within 5 seconds, unblock the UI anyway
+    const timeout = setTimeout(() => {
+      if (loading) {
+        console.warn("⚠️ AgenQ SDK load timed out - unblocking UI");
+        setLoading(false);
+      }
+    }, 5000);
+
     function tryMount() {
       if (!window.AGENQ?.render) return;
       if (!slotRef.current) return;
       if (mounted.current) return;
 
       mounted.current = true;
+      clearTimeout(timeout);
 
       const key = Object.keys(localStorage).find((k) =>
         k.startsWith("agent-mount-state"),
@@ -41,8 +50,8 @@ export default function Agent() {
       console.log("🎉 AgenQ SDK detected → mounting");
 
       window.AGENQ.render({
-        agentId: "eb35f9fc-6f2d-48aa-925d-a133d7030876",
-        projectId: "d33341f4-f727-417f-a62b-fb7a1e617f2c",
+        agentId: "65206eb7-e156-42fc-b42c-2ee88902b1ef",
+        projectId: "9c21ed2d-8109-4c59-aa6d-6001ff2e5159",
         customerCode: "SUPER-USER",
       });
 
@@ -51,8 +60,11 @@ export default function Agent() {
 
     tryMount();
     const interval = setInterval(tryMount, 150);
-    return () => clearInterval(interval);
-  }, []);
+    return () => {
+      clearInterval(interval);
+      clearTimeout(timeout);
+    };
+  }, [loading]);
 
   return (
     <>
@@ -64,10 +76,12 @@ export default function Agent() {
 
       <div id='agenq-root' ref={slotRef} />
       <Script
-        src={
-          "https://cdn.aws.agenq.com/agenq-client-sdk.js"
-        }
+        src={"https://cdn.agenqglobal.com/agenq-client-sdk.js"}
         strategy='afterInteractive'
+        onError={() => {
+          console.error("❌ Failed to load AgenQ SDK (SSL or Network error)");
+          setLoading(false);
+        }}
       />
     </>
   );
