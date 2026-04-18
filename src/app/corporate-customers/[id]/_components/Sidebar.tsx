@@ -28,6 +28,7 @@ const NAV_ITEMS = [
   },
   { label: "Members", href: "/members", icon: UserCircle },
   { label: "Claims", href: "/claims", icon: FileText },
+  { label: "Plans", href: "/plans", icon: Shield },
   { label: "Marketing", href: "/marketing", icon: Megaphone },
 ];
 

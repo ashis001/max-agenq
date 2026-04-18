@@ -1,0 +1,347 @@
+{
+  "project": "Policy Plans Configuration",
+  "version": "1.1",
+  "currency": "USD",
+  "description": "Insurance policy plans with Bronze, Silver, Gold, and Platinum tiers for comparison",
+  "plans": [
+    {
+      "plan_id": "bronze",
+      "plan_name": "Bronze Plan",
+      "tier": "Basic",
+      "monthly_premium": 29,
+      "annual_premium": 348,
+      "deductible": 2500,
+      "max_coverage": 50000,
+      "coverage_percentage": "60%",
+      "features": {
+        "hospitalization": {
+          "included": true,
+          "limit": 15000,
+          "copay": 500,
+          "details": "Covers room rent up to $300/day, ICU up to $500/day"
+        },
+        "outpatient": {
+          "included": true,
+          "limit": 5000,
+          "copay": 200,
+          "details": "Doctor consultations, diagnostics, and prescriptions"
+        },
+        "dental": {
+          "included": false,
+          "limit": 0,
+          "copay": 0,
+          "details": "Not covered in Bronze Plan"
+        },
+        "vision": {
+          "included": false,
+          "limit": 0,
+          "copay": 0,
+          "details": "Not covered in Bronze Plan"
+        },
+        "maternity": {
+          "included": false,
+          "limit": 0,
+          "copay": 0,
+          "details": "Not covered in Bronze Plan"
+        },
+        "pre_existing_diseases": {
+          "included": true,
+          "waiting_period": "48 months",
+          "details": "Pre-existing conditions covered after 48 months waiting period"
+        },
+        "ambulance": {
+          "included": true,
+          "limit": 2000,
+          "details": "Emergency ambulance services up to $2,000 per claim"
+        },
+        "tax_benefit": {
+          "included": true,
+          "section": "80D",
+          "limit": 25000,
+          "details": "Tax deduction under Section 80D"
+        }
+      },
+      "additional_benefits": [
+        "24/7 Teleconsultation",
+        "Health wallet $200",
+        "Discounts on wellness purchases"
+      ],
+      "suitable_for": "Young individuals, budget-conscious families",
+      "status": "active",
+      "rating": "★★★☆☆"
+    },
+    {
+      "plan_id": "silver",
+      "plan_name": "Silver Plan",
+      "tier": "Standard",
+      "monthly_premium": 59,
+      "annual_premium": 708,
+      "deductible": 1500,
+      "max_coverage": 100000,
+      "coverage_percentage": "75%",
+      "features": {
+        "hospitalization": {
+          "included": true,
+          "limit": 30000,
+          "copay": 300,
+          "details": "Covers room rent up to $500/day, ICU up to $800/day"
+        },
+        "outpatient": {
+          "included": true,
+          "limit": 10000,
+          "copay": 150,
+          "details": "Doctor consultations, diagnostics, and prescriptions"
+        },
+        "dental": {
+          "included": true,
+          "limit": 5000,
+          "copay": 200,
+          "details": "Basic dental procedures including cleaning and fillings"
+        },
+        "vision": {
+          "included": true,
+          "limit": 3000,
+          "copay": 150,
+          "details": "Eye check-up and corrective lenses once per year"
+        },
+        "maternity": {
+          "included": false,
+          "limit": 0,
+          "copay": 0,
+          "details": "Not covered in Silver Plan"
+        },
+        "pre_existing_diseases": {
+          "included": true,
+          "waiting_period": "36 months",
+          "details": "Pre-existing conditions covered after 36 months waiting period"
+        },
+        "ambulance": {
+          "included": true,
+          "limit": 5000,
+          "details": "Emergency ambulance services up to $5,000 per claim"
+        },
+        "tax_benefit": {
+          "included": true,
+          "section": "80D",
+          "limit": 50000,
+          "details": "Tax deduction under Section 80D"
+        }
+      },
+      "additional_benefits": [
+        "24/7 Teleconsultation with specialists",
+        "Health wallet $500",
+        "Free annual health checkup",
+        "20% discount on partner labs",
+        "Mental health support"
+      ],
+      "suitable_for": "Young families, professionals, couples",
+      "status": "active",
+      "rating": "★★★★☆"
+    },
+    {
+      "plan_id": "gold",
+      "plan_name": "Gold Plan",
+      "tier": "Premium",
+      "monthly_premium": 69,
+      "annual_premium": 828,
+      "deductible": 500,
+      "max_coverage": 250000,
+      "coverage_percentage": "90%",
+      "features": {
+        "hospitalization": {
+          "included": true,
+          "limit": 75000,
+          "copay": 100,
+          "details": "Covers room rent up to $1,000/day, ICU up to $1,500/day, AC suite covered"
+        },
+        "outpatient": {
+          "included": true,
+          "limit": 25000,
+          "copay": 50,
+          "details": "Doctor consultations, diagnostics, and prescriptions with no limit"
+        },
+        "dental": {
+          "included": true,
+          "limit": 15000,
+          "copay": 100,
+          "details": "Full dental coverage including root canals, crowns, and orthodontics"
+        },
+        "vision": {
+          "included": true,
+          "limit": 10000,
+          "copay": 50,
+          "details": "Annual eye check-up, lenses, and LASIK surgery covered"
+        },
+        "maternity": {
+          "included": true,
+          "limit": 50000,
+          "copay": 500,
+          "details": "Covers normal and cesarean delivery, newborn coverage from day 1"
+        },
+        "pre_existing_diseases": {
+          "included": true,
+          "waiting_period": "24 months",
+          "details": "Pre-existing conditions covered after 24 months waiting period"
+        },
+        "ambulance": {
+          "included": true,
+          "limit": 15000,
+          "details": "Emergency ambulance services including air ambulance covered"
+        },
+        "tax_benefit": {
+          "included": true,
+          "section": "80D",
+          "limit": 75000,
+          "details": "Tax deduction under Section 80D"
+        }
+      },
+      "additional_benefits": [
+        "24/7 Priority teleconsultation with specialists",
+        "Health wallet $1,500",
+        "Quarterly health checkup",
+        "Unlimited diagnostics at partner labs",
+        "Dedicated relationship manager",
+        "International coverage (emergency)",
+        "Home healthcare services",
+        "Alternative medicine coverage (Ayurveda, Homeopathy)"
+      ],
+      "suitable_for": "Families with children, high-income individuals, seniors",
+      "status": "recommended",
+      "rating": "★★★★☆"
+    },
+    {
+      "plan_id": "platinum",
+      "plan_name": "Platinum Plan",
+      "tier": "Ultimate",
+      "monthly_premium": 129,
+      "annual_premium": 1548,
+      "deductible": 0,
+      "max_coverage": 1000000,
+      "coverage_percentage": "100%",
+      "features": {
+        "hospitalization": {
+          "included": true,
+          "limit": 250000,
+          "copay": 0,
+          "details": "Unlimited room rent, global hospital network, zero co-pay"
+        },
+        "outpatient": {
+          "included": true,
+          "limit": 100000,
+          "copay": 0,
+          "details": "Full coverage for any specialist globally, no waiting periods"
+        },
+        "dental": {
+          "included": true,
+          "limit": 50000,
+          "copay": 0,
+          "details": "Premium cosmetic dental and specialized oral surgery"
+        },
+        "vision": {
+          "included": true,
+          "limit": 25000,
+          "copay": 0,
+          "details": "Advanced vision care, any designer frames, and surgical corrections"
+        },
+        "maternity": {
+          "included": true,
+          "limit": 150000,
+          "copay": 0,
+          "details": "Global maternity care, private luxury suites, neonatal intensive care"
+        },
+        "pre_existing_diseases": {
+          "included": true,
+          "waiting_period": "0 months",
+          "details": "Instant coverage for pre-existing conditions"
+        },
+        "ambulance": {
+          "included": true,
+          "limit": 50000,
+          "details": "Global air ambulance and critical care transport"
+        },
+        "tax_benefit": {
+          "included": true,
+          "section": "80D",
+          "limit": 100000,
+          "details": "Maximum tax deduction under Section 80D"
+        }
+      },
+      "additional_benefits": [
+        "Concierge medicine service",
+        "Global second opinion from world-leading experts",
+        "Zero co-pay on all claims",
+        "Private jet medical evacuation",
+        "Luxury wellness retreat access",
+        "Family office dedicated advisor"
+      ],
+      "suitable_for": "High-net-worth individuals, expats, luxury seekers",
+      "status": "active",
+      "rating": "★★★★★"
+    }
+  ],
+  "comparison_matrix": {
+    "headers": ["Feature", "Bronze", "Silver", "Gold", "Platinum"],
+    "rows": [
+      ["Monthly Premium", "$29", "$59", "$69", "$129"],
+      ["Annual Premium", "$348", "$708", "$828", "$1,548"],
+      ["Deductible", "$2,500", "$1,500", "$500", "$0"],
+      ["Max Coverage", "$50,000", "$100,000", "$250,000", "Unlimited"],
+      ["Coverage %", "60%", "75%", "90%", "100%"],
+      ["Hospitalization", "$15,000", "$30,000", "$75,000", "Unlimited"],
+      ["Outpatient", "$5,000", "$10,000", "$25,000", "Unlimited"],
+      ["Dental", "Not Included", "$5,000", "$15,000", "$50,000"],
+      ["Vision", "Not Included", "$3,000", "$10,000", "$25,000"],
+      ["Maternity", "Not Included", "Not Included", "$50,000", "$150,000"],
+      ["Pre-existing (Waiting)", "48 months", "36 months", "24 months", "Instant"],
+      ["Ambulance", "$2,000", "$5,000", "$15,000", "Global Air"],
+      ["Tax Benefit (80D)", "$25,000", "$50,000", "$75,000", "$100,000"],
+      ["Teleconsultation", "Basic", "Specialists", "Priority 24/7", "Concierge"],
+      ["Health Wallet", "$200", "$500", "$1,500", "$5,000"],
+      ["Annual Checkup", "Not Included", "Included", "Quarterly", "Monthly Luxury"],
+      ["Dedicated Manager", "Not Included", "Not Included", "Included", "Concierge Team"],
+      ["International Coverage", "Not Included", "Not Included", "Included", "Full Global"],
+      ["Home Healthcare", "Not Included", "Not Included", "Included", "Unlimited"]
+    ]
+  },
+  "recommendations": {
+    "young_single": {
+      "recommended": "bronze",
+      "reason": "Budget-friendly with essential coverage for healthy individuals"
+    },
+    "couple": {
+      "recommended": "silver",
+      "reason": "Balanced coverage with dental and vision benefits"
+    },
+    "family_with_kids": {
+      "recommended": "gold",
+      "reason": "Comprehensive coverage including maternity and pediatric care"
+    },
+    "senior": {
+      "recommended": "gold",
+      "reason": "Lower waiting periods for pre-existing conditions, higher coverage"
+    },
+    "business_professional": {
+      "recommended": "platinum",
+      "reason": "Maximum tax benefits, full global coverage, and zero co-pay"
+    }
+  },
+  "prompts": {
+    "comparison_keywords": [
+      "compare plans",
+      "difference between plans",
+      "which plan is best",
+      "plan comparison",
+      "bronze vs silver vs gold vs platinum",
+      "show me the plans",
+      "what plans do you offer",
+      "plan details",
+      "coverage comparison"
+    ],
+    "plan_specific": {
+      "bronze": ["bronze plan", "basic plan", "lowest plan", "cheapest plan", "entry level"],
+      "silver": ["silver plan", "standard plan", "mid tier", "middle plan"],
+      "gold": ["gold plan", "premium plan", "top plan", "best plan", "comprehensive"],
+      "platinum": ["platinum plan", "ultimate plan", "highest plan", "zero copay", "global coverage"]
+    }
+  }
+}

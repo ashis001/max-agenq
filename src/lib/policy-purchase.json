@@ -1,0 +1,146 @@
+{
+  "project": "Policy Purchase Workflow",
+  "version": "1.2",
+  "description": "Renamed plans to Bronze, Silver, Gold, Platinum (Toronto Profile)",
+  "trigger_keywords": [
+    "buy a policy",
+    "purchase policy",
+    "get new insurance",
+    "start new policy",
+    "buy insurance",
+    "interested in buying",
+    "want to buy",
+    "looking for insurance",
+    "buy health insurance"
+  ],
+  "prompts": {
+    "trigger_keywords": [
+      "buy a policy",
+      "purchase policy",
+      "get new insurance",
+      "start new policy",
+      "buy insurance",
+      "interested in buying",
+      "want to buy",
+      "looking for insurance",
+      "buy health insurance"
+    ]
+  },
+  "steps": [
+    {
+      "step_id": 1,
+      "name": "Context Awareness",
+      "nina_response": "Sure, I can help with that.",
+      "follow_up": "I found your profile — **John, 32, based in Toronto**. Just confirming, is this still correct?",
+      "actions": [
+        {
+          "label": "Yes, it is",
+          "value": "yes"
+        },
+        {
+          "label": "No, let me update",
+          "value": "update_profile"
+        }
+      ]
+    },
+    {
+      "step_id": 2,
+      "name": "Light Personalization",
+      "nina_response": "Great. I just need a bit more context to narrow things down.",
+      "follow_up": "Are you married? And how would you describe your lifestyle — more active, or more social/travel-heavy?",
+      "user_expectation": "Married/Single and Lifestyle"
+    },
+    {
+      "step_id": 3,
+      "name": "Set Expectation",
+      "nina_response": "Got it.",
+      "follow_up": "I’ll shortlist a few plans that fit your profile, and then we can go deeper based on what matters most to you.",
+      "actions": [
+        {
+          "label": "Show me the plans",
+          "value": "show_plans"
+        }
+      ]
+    },
+    {
+      "step_id": 4,
+      "name": "Plan Comparison",
+      "nina_response": "I’ve narrowed this down to 4 plans that fit well for you. Here’s a quick view comparing coverage, premium, and key benefits.",
+      "table": "| Plan | Monthly Premium | Coverage Limit | Key Benefits | Best For |\n| :--- | :--- | :--- | :--- | :--- |\n| Bronze | $29 | $50K | Basic hospitalization | Budget |\n| Silver | $59 | $100K | Specialist visits, health wallet | Balanced |\n| Gold | $69 | $250K | Critical illness, higher limits | Families |\n| Platinum | $129 | Unlimited | Zero co-pay, global coverage | Premium |",
+      "follow_up": "At a high level:\n• Bronze is basic\n• Silver is balanced\n• Gold adds stronger protection\n• Platinum is premium, no compromises\n\nBefore I recommend — what matters more to you: lower monthly cost, or better long-term coverage?",
+      "options": [
+        {
+          "label": "Probably balanced",
+          "value": "balanced"
+        },
+        {
+          "label": "Better long-term coverage",
+          "value": "long_term"
+        },
+        {
+          "label": "Explain differences",
+          "value": "explain"
+        }
+      ]
+    },
+    {
+      "step_id": 5,
+      "name": "Recommendation",
+      "nina_response": "Silver is a solid choice — most users start there. But based on your profile — married and fairly active lifestyle — you’re slightly more exposed to health risks over time.",
+      "follow_up": "For about $10 more per month, **Gold** gives you:\n• 2.5x higher coverage\n• Critical illness protection\n• Better long-term flexibility\n\nIf you’re optimizing purely for cost → Silver works\nIf you’re optimizing for peace of mind → Gold is the better fit",
+      "actions": [
+        {
+          "label": "Gold looks good",
+          "value": "choose_gold"
+        },
+        {
+          "label": "Tell me about Platinum",
+          "value": "explore_platinum"
+        }
+      ]
+    },
+    {
+      "step_id": 6,
+      "name": "Exploration Platinum",
+      "nina_response": "Platinum is more of a premium option. It’s usually chosen by users who want maximum coverage and don’t want to worry about edge cases.",
+      "follow_up": "Think of it this way: Gold is strong and balanced, while Platinum is full coverage with fewer trade-offs. If budget isn’t a concern, Platinum is great. Otherwise, Gold is a very solid choice. Which one shall we go with?",
+      "actions": [
+        {
+          "label": "Let's do Gold",
+          "value": "choose_gold"
+        },
+        {
+          "label": "Let's do Platinum",
+          "value": "choose_platinum"
+        }
+      ]
+    },
+    {
+      "step_id": 7,
+      "name": "Quote Generation Permission",
+      "nina_response": "Would you like me to generate a quote for **Gold**?",
+      "actions": [
+        {
+          "label": "Yes",
+          "value": "confirm_quote_gold"
+        },
+        {
+          "label": "No",
+          "value": "cancel_quote"
+        }
+      ]
+    },
+    {
+      "step_id": 8,
+      "name": "Action / Quote",
+      "nina_response": "Done! I’ve created your quote and sent it to your email.",
+      "follow_up": "You'll see a simple summary, key inclusions/exclusions, and a link to continue. You don't need long documents unless you want to."
+    },
+    {
+      "step_id": 9,
+      "name": "Close",
+      "nina_response": "No problem. I’m here whenever you need. Let me know if you’d like help comparing more options later!",
+      "follow_up": "Is there anything else I can assist with?"
+    }
+  ]
+}
