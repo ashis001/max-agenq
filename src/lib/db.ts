@@ -1,66 +1,94 @@
-import { supabase } from './supabase';
 import { Corporate } from './types';
 
-export async function upsertCorporate(corporate: Corporate) {
-    const { data, error } = await supabase
-        .from('corporates')
-        .upsert({
-            id: corporate.id,
-            name: corporate.name,
-            broker: corporate.broker,
-            contact_email: corporate.contactEmail,
-            data: corporate,
-            updated_at: new Date().toISOString()
-        });
+const DB_NAME = 'MaxDB';
+const STORE_NAME = 'corporates';
+const DB_VERSION = 1;
 
-    if (error) {
-        console.error('Error upserting corporate:', error);
-        throw error;
-    }
-    return data;
+function openDB(): Promise<IDBDatabase> {
+    return new Promise((resolve, reject) => {
+        if (typeof window === 'undefined') {
+            reject(new Error('IndexedDB is only available in the browser'));
+            return;
+        }
+        const request = indexedDB.open(DB_NAME, DB_VERSION);
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => resolve(request.result);
+        request.onupgradeneeded = (event) => {
+            const db = (event.target as IDBOpenDBRequest).result;
+            if (!db.objectStoreNames.contains(STORE_NAME)) {
+                db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+            }
+        };
+    });
 }
 
-export async function fetchAllCorporates() {
-    const { data, error } = await supabase
-        .from('corporates')
-        .select('*')
-        .order('updated_at', { ascending: false });
+export async function upsertCorporate(corporate: Corporate) {
+    const db = await openDB();
+    return new Promise<void>((resolve, reject) => {
+        const transaction = db.transaction(STORE_NAME, 'readwrite');
+        const store = transaction.objectStore(STORE_NAME);
+        
+        // Add updated_at for sorting
+        const dataToSave = {
+            ...corporate,
+            updated_at: new Date().toISOString()
+        };
+        
+        const request = store.put(dataToSave);
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => resolve();
+    });
+}
 
-    if (error) {
+export async function fetchAllCorporates(): Promise<Corporate[]> {
+    try {
+        const db = await openDB();
+        return new Promise((resolve, reject) => {
+            const transaction = db.transaction(STORE_NAME, 'readonly');
+            const store = transaction.objectStore(STORE_NAME);
+            const request = store.getAll();
+            
+            request.onerror = () => reject(request.error);
+            request.onsuccess = () => {
+                const results = request.result as (Corporate & { updated_at: string })[];
+                // Sort by updated_at descending
+                const sorted = results.sort((a, b) => 
+                    new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+                );
+                resolve(sorted);
+            };
+        });
+    } catch (error) {
         console.error('Error fetching corporates:', error);
         return [];
     }
-
-    return data.map(item => item.data as Corporate);
 }
 
-export async function fetchCorporateById(id: string) {
-    const { data, error } = await supabase
-        .from('corporates')
-        .select('data')
-        .eq('id', id)
-        .maybeSingle();
-
-    if (error) {
-        // If it's not a 'no rows' error (PGRST116), log it.
-        // maybeSingle should handle no rows by returning null data and no error usually.
+export async function fetchCorporateById(id: string): Promise<Corporate | null> {
+    try {
+        const db = await openDB();
+        return new Promise((resolve, reject) => {
+            const transaction = db.transaction(STORE_NAME, 'readonly');
+            const store = transaction.objectStore(STORE_NAME);
+            const request = store.get(id);
+            
+            request.onerror = () => reject(request.error);
+            request.onsuccess = () => resolve(request.result || null);
+        });
+    } catch (error) {
         console.error('Error fetching corporate by id:', error);
         return null;
     }
-
-    if (!data) return null;
-
-    return data.data as Corporate;
 }
 
-export async function deleteCorporate(id: string) {
-    const { error } = await supabase
-        .from('corporates')
-        .delete()
-        .eq('id', id);
-
-    if (error) {
-        console.error('Error deleting corporate:', error);
-        throw error;
-    }
+export async function deleteCorporate(id: string): Promise<void> {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction(STORE_NAME, 'readwrite');
+        const store = transaction.objectStore(STORE_NAME);
+        const request = store.delete(id);
+        
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => resolve();
+    });
 }

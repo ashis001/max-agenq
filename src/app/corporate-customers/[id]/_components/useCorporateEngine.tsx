@@ -67,14 +67,14 @@ export function useCorporateEngine(corporateId: string) {
     const [corporate, setCorporate] = useState<Corporate>({ ...INITIAL_STATE, id: corporateId });
     const [isSaving, setIsSaving] = useState(false);
 
-    // Load from Supabase on mount
+    // Load from local storage on mount
     useEffect(() => {
         if (corporateId !== "new-corp") {
-            const loadFromCloud = async () => {
-                const cloudData = await fetchCorporateById(corporateId);
-                if (cloudData) setCorporate(cloudData);
+            const loadFromLocal = async () => {
+                const localData = await fetchCorporateById(corporateId);
+                if (localData) setCorporate(localData);
             };
-            loadFromCloud();
+            loadFromLocal();
         }
     }, [corporateId]);
 
@@ -100,7 +100,7 @@ export function useCorporateEngine(corporateId: string) {
         try {
             setIsSaving(true);
 
-            // Persist the current state to Supabase on every stage transition
+            // Persist the current state to local storage on every stage transition
             if (corporateId !== "new-corp") {
                 await upsertCorporate({ ...corporate, stage: newStage });
             }

@@ -33,8 +33,8 @@ export default function CorporateListingPage() {
     const [activeGuide, setActiveGuide] = useState<string | null>(null);
 
     const loadCorporatesList = async () => {
-        const cloudData = await fetchAllCorporates();
-        setCorporates(cloudData);
+        const localData = await fetchAllCorporates();
+        setCorporates(localData);
     };
 
     useEffect(() => {
