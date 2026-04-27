@@ -43,7 +43,7 @@ export default function HelpCenterPage() {
 
             <main className='flex-1 md:ml-64 relative overflow-hidden flex flex-col'>
                 {/* Header Hero Section */}
-                <div className="relative h-80 bg-[#0a1e3b] overflow-hidden flex flex-col items-center justify-center px-4 md:px-8 pt-14 md:pt-0">
+                <div className="relative h-80 bg-[#0a1e3b] overflow-hidden flex flex-col items-center justify-center px-4 md:px-8 pt-24 md:pt-0 pb-4 md:pb-0">
                     <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '32px 32px' }} />
                     <div className="absolute top-[-20%] right-[-10%] w-[500px] h-[500px] bg-blue-500/20 rounded-full blur-[100px]" />
 

@@ -57,7 +57,7 @@ export default function AdvisorsPage() {
                 <div className="absolute bottom-[-5%] right-[-5%] w-[400px] h-[400px] bg-indigo-400/10 rounded-full blur-[100px] pointer-events-none animate-pulse" />
 
                 {/* Premium Header */}
-                <header className="relative z-20 flex h-20 items-center justify-between border-b border-slate-200/60 bg-white/70 backdrop-blur-md px-4 md:px-8 pt-14 md:pt-0">
+                <header className="relative z-20 flex min-h-[5rem] md:h-20 flex-col md:flex-row items-start md:items-center justify-between gap-4 md:gap-0 border-b border-slate-200/60 bg-white/70 backdrop-blur-md px-4 md:px-8 pt-24 md:pt-0 pb-4 md:pb-0">
                     <div className="flex flex-col">
                         <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Advisors</h1>
                         <p className="text-xs text-slate-500 font-medium">Manage broker relationships & performance</p>

@@ -55,7 +55,7 @@ export default function CorporatePage({ params }: { params: { id: string } }) {
                 <div className="absolute bottom-[-5%] right-[-5%] w-[400px] h-[400px] bg-indigo-400/10 rounded-full blur-[100px] pointer-events-none animate-pulse" />
 
                 {/* Premium Header - Relative flow */}
-                <header className="relative z-50 flex h-20 items-center justify-between border-b border-slate-200/60 bg-white/80 backdrop-blur-xl px-4 md:px-8 pt-14 md:pt-0 shadow-sm">
+                <header className="relative z-50 flex min-h-[5rem] md:h-20 flex-col md:flex-row items-start md:items-center justify-between gap-4 md:gap-0 border-b border-slate-200/60 bg-white/80 backdrop-blur-xl px-4 md:px-8 pt-24 md:pt-0 pb-4 md:pb-0 shadow-sm">
                     <div className="flex flex-col">
                         <div className="flex items-center gap-2">
                             <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Corporate Management</h1>
@@ -75,7 +75,7 @@ export default function CorporatePage({ params }: { params: { id: string } }) {
                 </header>
 
                 {/* Tabs Bar - Relative flow */}
-                <div className="relative z-40 px-4 md:px-8 pt-14 md:pt-0 py-4 transition-all duration-300">
+                <div className="relative z-40 px-4 md:px-8 pt-24 md:pt-0 pb-4 md:pb-0 py-4 transition-all duration-300">
                     <div className="flex p-1 bg-white/50 backdrop-blur-md border border-slate-200/60 rounded-xl w-fit shadow-sm pointer-events-auto">
                         <button className={`flex items-center gap-2 px-6 py-3 rounded-lg text-xs font-black uppercase tracking-wide transition-all duration-300 ${activeStage === "CORPORATE_INFO" ? "bg-[#0a1e3b] text-white shadow-lg shadow-blue-900/20" : "text-slate-500 hover:text-slate-700 hover:bg-white/50"}`}>
                             <Globe className="w-5 h-5" />
@@ -97,7 +97,7 @@ export default function CorporatePage({ params }: { params: { id: string } }) {
                 </div>
 
                 {/* Main Content Area */}
-                <div className="relative z-10 px-4 md:px-8 pt-14 md:pt-0 pt-4 pb-12">
+                <div className="relative z-10 px-4 md:px-8 pt-24 md:pt-0 pb-4 md:pb-0 pt-4 pb-12">
                     <div className="max-w-[1600px] mx-auto animate-scale-in">
                         {activeStage === "CORPORATE_INFO" && (
                             <CorporateInfoForm engine={engine} />

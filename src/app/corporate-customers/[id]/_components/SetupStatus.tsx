@@ -224,7 +224,7 @@ export function SetupStatus({ engine }: { engine: ReturnType<typeof useCorporate
 
             <div className="flex justify-between pt-8">
                 <button onClick={() => setSetupStage("TIERS")} className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-6 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-all hover:-translate-y-0.5"><ChevronLeft className="h-4 w-4" /> Previous</button>
-                <button id="setup-next-btn" onClick={() => setModalState('SELECT_SUBDOMAIN')} className={clsx("flex items-center gap-2 rounded-xl bg-[#0a1e3b] px-4 md:px-8 pt-14 md:pt-0 py-2.5 text-xs font-bold text-white shadow-lg shadow-blue-900/20 transition-all uppercase tracking-wide", activeFillingField === "setup-next-btn" ? "ring-4 ring-blue-500/50 scale-105 shadow-2xl z-50" : "hover:bg-blue-900 hover:-translate-y-0.5")}>Next <ChevronRight className="h-4 w-4" /></button>
+                <button id="setup-next-btn" onClick={() => setModalState('SELECT_SUBDOMAIN')} className={clsx("flex items-center gap-2 rounded-xl bg-[#0a1e3b] px-4 md:px-8 pt-24 md:pt-0 pb-4 md:pb-0 py-2.5 text-xs font-bold text-white shadow-lg shadow-blue-900/20 transition-all uppercase tracking-wide", activeFillingField === "setup-next-btn" ? "ring-4 ring-blue-500/50 scale-105 shadow-2xl z-50" : "hover:bg-blue-900 hover:-translate-y-0.5")}>Next <ChevronRight className="h-4 w-4" /></button>
             </div>
 
             {modalState !== 'NONE' && (

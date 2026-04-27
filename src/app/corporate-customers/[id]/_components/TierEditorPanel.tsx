@@ -1360,7 +1360,7 @@ export function TierEditorPanel({
                                     <p className="text-[15px] font-medium text-gray-700 text-center">Please select one core plan from above</p>
                                     <button
                                         onClick={() => setShowInfoModal(false)}
-                                        className="px-4 md:px-8 pt-14 md:pt-0 py-1.5 bg-[#1e3a5f] rounded text-xs font-bold text-white shadow hover:bg-slate-800 transition-colors min-w-[80px]"
+                                        className="px-4 md:px-8 pt-24 md:pt-0 pb-4 md:pb-0 py-1.5 bg-[#1e3a5f] rounded text-xs font-bold text-white shadow hover:bg-slate-800 transition-colors min-w-[80px]"
                                     >
                                         OK
                                     </button>
@@ -1372,8 +1372,8 @@ export function TierEditorPanel({
 
                 {/* Sticky Footer */}
                 <div className="bg-white px-6 py-3 flex justify-end gap-3 border-t border-gray-200 sticky bottom-0 z-50 shadow-[0_-4px_10px_rgba(0,0,0,0.03)]">
-                    <button id="tier-save-btn" onClick={handleSubmit(onFormSubmit)} className="bg-[#1e3a5f] rounded px-4 md:px-8 pt-14 md:pt-0 py-2 text-[11px] font-black text-white hover:bg-slate-800 transition-all shadow-md uppercase tracking-wide">Save</button>
-                    <button onClick={onCancel} className="bg-white border border-slate-300 rounded px-4 md:px-8 pt-14 md:pt-0 py-2 text-[11px] font-black text-[#1e3a5f] hover:bg-slate-50 hover:border-slate-400 transition-all shadow-sm uppercase tracking-wide">Close</button>
+                    <button id="tier-save-btn" onClick={handleSubmit(onFormSubmit)} className="bg-[#1e3a5f] rounded px-4 md:px-8 pt-24 md:pt-0 pb-4 md:pb-0 py-2 text-[11px] font-black text-white hover:bg-slate-800 transition-all shadow-md uppercase tracking-wide">Save</button>
+                    <button onClick={onCancel} className="bg-white border border-slate-300 rounded px-4 md:px-8 pt-24 md:pt-0 pb-4 md:pb-0 py-2 text-[11px] font-black text-[#1e3a5f] hover:bg-slate-50 hover:border-slate-400 transition-all shadow-sm uppercase tracking-wide">Close</button>
                 </div>
 
                 {/* Guide Pointer (Nina's Mouse) - Outside scroll container to stay on top of footer */}

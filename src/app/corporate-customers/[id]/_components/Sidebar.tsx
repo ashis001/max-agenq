@@ -47,13 +47,26 @@ export function Sidebar() {
 
   return (
     <>
-      {/* Mobile Burger Button - Fixed Top Left */}
-      <button 
-        onClick={() => setIsMobileOpen(true)}
-        className="md:hidden fixed top-5 left-4 z-[60] p-2 bg-white text-slate-700 rounded-lg shadow-md border border-slate-200 hover:bg-slate-50 transition-colors"
-      >
-        <Menu className="w-5 h-5" />
-      </button>
+      {/* Mobile Top App Bar */}
+      <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-white/90 backdrop-blur-lg border-b border-slate-200 z-[60] flex items-center justify-between px-4 shadow-sm">
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={() => setIsMobileOpen(true)}
+            className="p-2 -ml-2 text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+          >
+            <Menu className="w-6 h-6" />
+          </button>
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 flex items-center justify-center">
+              <img src="/max.png" alt="Max Logo" className="w-full h-full object-contain scale-110" />
+            </div>
+            <h1 className='text-sm font-black text-slate-900 uppercase tracking-tighter leading-none'>Max</h1>
+          </div>
+        </div>
+        <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 overflow-hidden shadow-sm">
+          <img src="/image.png" className="w-full h-full object-cover" />
+        </div>
+      </div>
 
       {/* Mobile Overlay */}
       {isMobileOpen && (
