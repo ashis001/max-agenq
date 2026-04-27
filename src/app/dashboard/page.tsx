@@ -107,8 +107,8 @@ export default function DashboardPage() {
             <p className="text-xs text-slate-500 font-medium">Enterprise overview & real-time analytics</p>
           </div>
 
-          <div className='flex items-center gap-6'>
-            <div className="flex items-center bg-slate-100/80 p-1 rounded-xl border border-slate-200 shadow-inner">
+          <div className='flex flex-wrap items-center gap-4 md:gap-6 w-full md:w-auto mt-4 md:mt-0'>
+            <div className="flex flex-wrap sm:flex-nowrap items-center bg-slate-100/80 p-1 rounded-xl border border-slate-200 shadow-inner w-full sm:w-auto">
               {["Today", "This Week", "This Month"].map((range) => (
                 <button
                   key={range}
