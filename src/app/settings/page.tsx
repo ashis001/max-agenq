@@ -43,12 +43,12 @@ export default function SettingsPage() {
             <MaxGreeting />
             <Sidebar />
 
-            <main className='flex-1 ml-64 relative overflow-hidden flex flex-col'>
+            <main className='flex-1 md:ml-64 relative overflow-hidden flex flex-col'>
                 {/* Dynamic Background Accents */}
                 <div className="absolute top-[-10%] left-[-5%] w-[400px] h-[400px] bg-blue-400/10 rounded-full blur-[100px] pointer-events-none" />
 
                 {/* Header */}
-                <header className='relative z-20 flex h-20 items-center justify-between border-b border-slate-200/60 bg-white/70 backdrop-blur-md px-8'>
+                <header className='relative z-20 flex h-20 items-center justify-between border-b border-slate-200/60 bg-white/70 backdrop-blur-md px-4 md:px-8 pt-14 md:pt-0'>
                     <div className='flex flex-col'>
                         <h1 className='text-2xl font-bold text-slate-900 tracking-tight'>Settings</h1>
                         <p className="text-xs text-slate-500 font-medium">Configure your platform experience</p>

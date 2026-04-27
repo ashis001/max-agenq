@@ -46,7 +46,7 @@ export default function MarketingPage() {
     return (
         <div className="flex min-h-screen bg-gradient-to-tr from-slate-200 via-indigo-50 to-blue-100 font-sans selection:bg-blue-600/10">
             <Sidebar />
-            <main className="flex-1 ml-64 relative overflow-hidden flex flex-col">
+            <main className="flex-1 md:ml-64 relative overflow-hidden flex flex-col">
                 <AnimatedGrid />
 
                 {/* Dynamic Background Accents */}
@@ -54,7 +54,7 @@ export default function MarketingPage() {
                 <div className="absolute bottom-[-5%] right-[-5%] w-[400px] h-[400px] bg-indigo-400/10 rounded-full blur-[100px] pointer-events-none animate-pulse" />
 
                 {/* Premium Header */}
-                <header className="relative z-20 flex h-20 items-center justify-between border-b border-slate-200/60 bg-white/70 backdrop-blur-md px-8">
+                <header className="relative z-20 flex h-20 items-center justify-between border-b border-slate-200/60 bg-white/70 backdrop-blur-md px-4 md:px-8 pt-14 md:pt-0">
                     <div className="flex flex-col">
                         <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Marketing Center</h1>
                         <p className="text-xs text-slate-500 font-medium">Download & share campaign assets</p>

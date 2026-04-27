@@ -930,7 +930,7 @@ export function CorporateInfoForm({ engine }: { engine: ReturnType<typeof useCor
                     type="submit"
                     disabled={isSaving}
                     className={clsx(
-                        "flex items-center gap-2 rounded-xl px-8 py-3 text-sm font-bold text-white transition-all duration-300 disabled:opacity-50",
+                        "flex items-center gap-2 rounded-xl px-4 md:px-8 pt-14 md:pt-0 py-3 text-sm font-bold text-white transition-all duration-300 disabled:opacity-50",
                         isSubmittingHighlighted
                             ? "bg-[#0a1e3b] ring-4 ring-blue-900/40 scale-105 shadow-[0_0_20px_rgba(10,30,59,0.4)]"
                             : "bg-[#0a1e3b] hover:bg-blue-900 shadow-lg shadow-blue-900/20 hover:shadow-xl hover:-translate-y-0.5"

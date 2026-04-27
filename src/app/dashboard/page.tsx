@@ -93,7 +93,7 @@ export default function DashboardPage() {
       <MaxGreeting />
       <Sidebar />
 
-      <main className='flex-1 ml-64 relative overflow-hidden flex flex-col'>
+      <main className='flex-1 md:ml-64 relative overflow-hidden flex flex-col'>
         <AnimatedGrid />
 
         {/* Dynamic Background Accents */}
@@ -101,7 +101,7 @@ export default function DashboardPage() {
         <div className="absolute bottom-[-5%] right-[-5%] w-[400px] h-[400px] bg-indigo-400/10 rounded-full blur-[100px] pointer-events-none animate-pulse" />
 
         {/* Premium Header */}
-        <header className='relative z-20 flex h-20 items-center justify-between border-b border-slate-200/60 bg-white/70 backdrop-blur-md px-8'>
+        <header className='relative z-20 flex h-20 items-center justify-between border-b border-slate-200/60 bg-white/70 backdrop-blur-md px-4 md:px-8 pt-14 md:pt-0'>
           <div className='flex flex-col'>
             <h1 className='text-2xl font-bold text-slate-900 tracking-tight'>Dashboard</h1>
             <p className="text-xs text-slate-500 font-medium">Enterprise overview & real-time analytics</p>
@@ -313,8 +313,8 @@ export default function DashboardPage() {
                   </button>
                 </div>
 
-                <div className='p-3'>
-                  <table className='w-full text-left'>
+                <div className='p-3 overflow-x-auto'>
+                  <table className='w-full text-left min-w-[500px]'>
                     <tbody className='divide-y divide-slate-50'>
                       {[
                         { name: "Acme Corp Inc.", status: "Active", date: "Oct 24", color: "emerald", icon: ShieldCheck },

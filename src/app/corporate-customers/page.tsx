@@ -86,7 +86,7 @@ export default function CorporateListingPage() {
     return (
         <div className="flex min-h-screen bg-gradient-to-tr from-slate-200 via-indigo-50 to-blue-100 font-sans selection:bg-blue-600/10">
             <Sidebar />
-            <main className="flex-1 ml-64 relative overflow-hidden flex flex-col">
+            <main className="flex-1 md:ml-64 relative overflow-hidden flex flex-col">
                 <AnimatedGrid />
 
                 {/* Dynamic Background Accents */}
@@ -94,7 +94,7 @@ export default function CorporateListingPage() {
                 <div className="absolute bottom-[-5%] right-[-5%] w-[400px] h-[400px] bg-indigo-400/10 rounded-full blur-[100px] pointer-events-none animate-pulse" />
 
                 {/* Premium Header */}
-                <header className="relative z-20 flex h-20 items-center justify-between border-b border-slate-200/60 bg-white/70 backdrop-blur-md px-8">
+                <header className="relative z-20 flex h-20 items-center justify-between border-b border-slate-200/60 bg-white/70 backdrop-blur-md px-4 md:px-8 pt-14 md:pt-0">
                     <div className="flex flex-col">
                         <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Corporate Customers</h1>
                         <p className="text-xs text-slate-500 font-medium">Manage enterprise contracts & profiles</p>
@@ -155,8 +155,8 @@ export default function CorporateListingPage() {
                             </div>
                         </div>
 
-                        <div className="bg-white">
-                            <table className="w-full text-left text-sm">
+                        <div className="bg-white overflow-x-auto">
+                            <table className="w-full text-left text-sm min-w-[800px]">
                                 <thead>
                                     <tr className="border-b border-slate-100 bg-slate-50/50">
                                         <th className="px-6 py-4 font-bold text-[10px] uppercase tracking-widest text-slate-500 w-12">Status</th>

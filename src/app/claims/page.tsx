@@ -383,7 +383,7 @@ export default function ClaimsPage() {
     return (
         <div className="flex min-h-screen bg-gradient-to-tr from-slate-200 via-indigo-50 to-blue-100 font-sans selection:bg-blue-600/10">
             <Sidebar />
-            <main className="flex-1 ml-64 relative overflow-hidden flex flex-col" ref={containerRef}>
+            <main className="flex-1 md:ml-64 relative overflow-hidden flex flex-col" ref={containerRef}>
                 <AnimatedGrid />
 
                 {/* Pointer Indicator */}
@@ -410,7 +410,7 @@ export default function ClaimsPage() {
                 <div className="absolute bottom-[-5%] right-[-5%] w-[400px] h-[400px] bg-indigo-400/10 rounded-full blur-[100px] pointer-events-none animate-pulse" />
 
                 {/* Premium Header */}
-                <header className="relative z-20 flex h-20 items-center justify-between border-b border-slate-200/60 bg-white/70 backdrop-blur-md px-8">
+                <header className="relative z-20 flex h-20 items-center justify-between border-b border-slate-200/60 bg-white/70 backdrop-blur-md px-4 md:px-8 pt-14 md:pt-0">
                     <div className="flex flex-col">
                         <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
                             {step === 0 ? "Claims Requests" : "New Claim Request"}
@@ -738,7 +738,7 @@ export default function ClaimsPage() {
 
                             {/* Process Visualizer Card (Reused from previous code) */}
                             <div className="bg-white/90 backdrop-blur-xl rounded-3xl border border-slate-300 shadow-[0_20px_50px_rgba(0,0,0,0.05)] overflow-hidden">
-                                <div className="bg-[#0a1e3b] px-8 py-6 flex justify-between items-center">
+                                <div className="bg-[#0a1e3b] px-4 md:px-8 pt-14 md:pt-0 py-6 flex justify-between items-center">
                                     <div className="flex items-center gap-4">
                                         <div className="p-3 bg-white/10 rounded-xl backdrop-blur-md border border-white/10">
                                             <Activity className="w-6 h-6 text-blue-400" />
@@ -787,7 +787,7 @@ export default function ClaimsPage() {
 
                             {/* Recent Claims Table for Demo */}
                             <div className="mt-8 bg-white/90 backdrop-blur-xl rounded-3xl border border-slate-300 shadow-[0_20px_50px_rgba(0,0,0,0.05)] overflow-hidden animate-slide-up" style={{ animationDelay: '0.4s' }}>
-                                <div className="px-8 py-5 border-b border-slate-200 bg-slate-50/50 flex justify-between items-center">
+                                <div className="px-4 md:px-8 pt-14 md:pt-0 py-5 border-b border-slate-200 bg-slate-50/50 flex justify-between items-center">
                                     <h3 className="text-sm font-black text-slate-900 uppercase tracking-wider">Recent Claim History</h3>
                                     <span className="text-[10px] font-bold text-slate-500 bg-slate-200/50 px-2 py-1 rounded-md">Showing latest 3 requests</span>
                                 </div>
@@ -795,11 +795,11 @@ export default function ClaimsPage() {
                                     <table className="w-full text-left">
                                         <thead>
                                             <tr className="bg-slate-50/80">
-                                                <th className="px-8 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Category</th>
-                                                <th className="px-8 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Claim ID</th>
-                                                <th className="px-8 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Submitted At</th>
-                                                <th className="px-8 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Status</th>
-                                                <th className="px-8 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest text-right">Action</th>
+                                                <th className="px-4 md:px-8 pt-14 md:pt-0 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Category</th>
+                                                <th className="px-4 md:px-8 pt-14 md:pt-0 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Claim ID</th>
+                                                <th className="px-4 md:px-8 pt-14 md:pt-0 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Submitted At</th>
+                                                <th className="px-4 md:px-8 pt-14 md:pt-0 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Status</th>
+                                                <th className="px-4 md:px-8 pt-14 md:pt-0 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest text-right">Action</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-slate-100">
@@ -809,7 +809,7 @@ export default function ClaimsPage() {
                                                 { id: 'CLM-88992', category: 'Health', date: 'Feb 1, 2026 14:30', status: 'Paid', color: 'green' },
                                             ].map((claim, idx) => (
                                                 <tr key={idx} className="hover:bg-slate-50/50 transition-colors group">
-                                                    <td className="px-8 py-4">
+                                                    <td className="px-4 md:px-8 pt-14 md:pt-0 py-4">
                                                         <div className="flex items-center gap-3">
                                                             <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold ${claim.category === 'Health' ? 'bg-rose-50 text-rose-600' :
                                                                 'bg-blue-50 text-blue-600'
@@ -819,14 +819,14 @@ export default function ClaimsPage() {
                                                             <span className="text-xs font-bold text-slate-900">{claim.category}</span>
                                                         </div>
                                                     </td>
-                                                    <td className="px-8 py-4 font-mono text-xs font-black text-blue-600">{claim.id}</td>
-                                                    <td className="px-8 py-4">
+                                                    <td className="px-4 md:px-8 pt-14 md:pt-0 py-4 font-mono text-xs font-black text-blue-600">{claim.id}</td>
+                                                    <td className="px-4 md:px-8 pt-14 md:pt-0 py-4">
                                                         <div className="flex flex-col">
                                                             <span className="text-xs font-bold text-slate-700">{claim.date.split(' ')[0]} {claim.date.split(' ')[1]}</span>
                                                             <span className="text-[10px] font-bold text-slate-400">{claim.date.split(' ')[2]}</span>
                                                         </div>
                                                     </td>
-                                                    <td className="px-8 py-4">
+                                                    <td className="px-4 md:px-8 pt-14 md:pt-0 py-4">
                                                         <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider ${claim.status === 'Processing'
                                                             ? 'bg-blue-100 text-blue-700 border border-blue-200/50'
                                                             : 'bg-green-100 text-green-700 border border-green-200/50'
@@ -834,7 +834,7 @@ export default function ClaimsPage() {
                                                             {claim.status}
                                                         </span>
                                                     </td>
-                                                    <td className="px-8 py-4 text-right">
+                                                    <td className="px-4 md:px-8 pt-14 md:pt-0 py-4 text-right">
                                                         <button className="text-xs font-black text-slate-400 group-hover:text-blue-600 transition-colors uppercase tracking-widest">View Details</button>
                                                     </td>
                                                 </tr>
@@ -855,11 +855,11 @@ export default function ClaimsPage() {
 
             {/* STEP 1: Select Insurance Type popup - Rendered outside main for full viewport coverage */}
             {step === 1 && (
-                <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-slate-900/60 backdrop-blur animate-Nina-fade-in px-8">
+                <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-slate-900/60 backdrop-blur animate-Nina-fade-in px-4 md:px-8 pt-14 md:pt-0">
                     <div className="bg-white rounded-[40px] shadow-[0_32px_80px_rgba(0,0,0,0.4)] border border-slate-200 w-full max-w-5xl relative animate-Nina-scale-in overflow-hidden">
 
                         {/* Professional Theme Header */}
-                        <div className="bg-[#0a1e3b] px-8 py-5 flex items-center justify-between">
+                        <div className="bg-[#0a1e3b] px-4 md:px-8 pt-14 md:pt-0 py-5 flex items-center justify-between">
                             <div className="flex items-center gap-3">
                                 <div className="p-2 bg-white/10 rounded-lg backdrop-blur-md">
                                     <Sparkles className="w-4 h-4 text-blue-400" />
