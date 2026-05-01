@@ -50,9 +50,9 @@ export default function Agent() {
       console.log("🎉 AgenQ SDK detected → mounting");
 
       window.AGENQ.render({
-        agentId: "65206eb7-e156-42fc-b42c-2ee88902b1ef",
-        projectId: "9c21ed2d-8109-4c59-aa6d-6001ff2e5159",
-        customerCode: "SUPER-USER",
+        // agentId: "65206eb7-e156-42fc-b42c-2ee88902b1ef",
+        // projectId: "9c21ed2d-8109-4c59-aa6d-6001ff2e5159",
+        // customerCode: "SUPER-USER",
       });
 
       setLoading(false);
