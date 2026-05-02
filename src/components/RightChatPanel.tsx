@@ -1930,7 +1930,7 @@ export default function RightChatPanel() {
                                 </div>
 
                                 {msg.sender === "assistant" && msg.text && (
-                                    <div className="flex items-center gap-2 mt-1 px-1">
+                                    <div className="flex items-center gap-1.5 -mt-1.5 px-3">
                                         <button
                                             onClick={() => toggleRating(msg.id, 'like')}
                                             className={clsx(
