@@ -2,9 +2,41 @@
 
 import { useCorporateEngine } from "./useCorporateEngine";
 import { Edit2, Copy, FileText, Info, ChevronLeft } from "lucide-react";
+import { useEffect, useRef } from "react";
+import { useChat } from "@/context/ChatContext";
+import { speakText } from "@/lib/google-tts";
 
 export function CorporateOverview({ engine }: { engine: ReturnType<typeof useCorporateEngine> }) {
     const { corporate, setSetupStage } = engine;
+    const { openChat, setIsWorkflowActive } = useChat();
+    const hasStartedRef = useRef(false);
+
+    useEffect(() => {
+        const guideStep = localStorage.getItem("max_guide_step");
+        if (guideStep === "corporate_overview_real" && !hasStartedRef.current) {
+            hasStartedRef.current = true;
+            
+            const runConclusion = async () => {
+                try {
+                    await new Promise(r => setTimeout(r, 1500));
+                    
+                    const msg = "Everything is set! Here is the final overview of ABC Inc.'s corporate profile. All tiers are active, and admin invites have been sent. I am now closing the onboarding workflow.";
+                    openChat(msg, true);
+                    await speakText(msg);
+                    
+                    await new Promise(r => setTimeout(r, 6000));
+                    
+                    // Final Cleanup
+                    localStorage.removeItem("max_guide_step");
+                    localStorage.removeItem("onboarding_type");
+                    setIsWorkflowActive(false);
+                } catch (e) {
+                    console.error("Overview conclusion error:", e);
+                }
+            };
+            runConclusion();
+        }
+    }, [openChat, setIsWorkflowActive]);
 
     const Card = ({ title, onEdit, children, hasImage, imageUrl }: any) => (
         <div className="flex flex-col rounded border border-gray-300 bg-white overflow-hidden shadow-sm h-full">

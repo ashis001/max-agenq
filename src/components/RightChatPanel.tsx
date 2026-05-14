@@ -28,7 +28,7 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useChat } from "@/context/ChatContext";
-import { fetchAllCorporates } from "@/lib/db";
+import { fetchAllCorporates, deleteCorporate } from "@/lib/db";
 import { Corporate } from "@/lib/types";
 import { speakText, stopSpeech } from "@/lib/google-tts";
 import clsx from "clsx";
@@ -68,6 +68,65 @@ interface ChatSession {
 export default function RightChatPanel() {
     // Helper: Render Message Text with Table Support
     const renderMessageText = (text: string, sender: string) => {
+        // Handle Missing Details Form
+        if (text.includes('[MISSING_DETAILS_FORM]')) {
+            const parts = text.split('[MISSING_DETAILS_FORM]');
+            
+            const renderPart = (partText: string) => {
+                return partText.split("**").map((p, i) =>
+                    i % 2 === 1 ? (
+                        <strong key={i} className={clsx("font-extrabold shadow-sm", sender === "user" ? "text-white" : "text-[#1e3a5f]")}>
+                            {p}
+                        </strong>
+                    ) : (
+                        p
+                    )
+                );
+            };
+
+            return (
+                <div className="flex flex-col gap-2 w-full">
+                    <div className="whitespace-pre-wrap">{renderPart(parts[0])}</div>
+                    
+                    <div className="my-2 p-4 bg-white border border-slate-200 rounded-xl shadow-sm flex flex-col gap-3 w-full">
+                        <div>
+                            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Billing Contact Email</label>
+                            <input type="email" id="chat-billing-email" defaultValue="finance@abcinc.ca" className="w-full mt-1 p-2 bg-slate-50 border border-slate-200 rounded-lg text-[13px] text-slate-700 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all" />
+                        </div>
+                        <div>
+                            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Payment Method</label>
+                            <select id="chat-payment-method" className="w-full mt-1 p-2 bg-slate-50 border border-slate-200 rounded-lg text-[13px] text-slate-700 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all">
+                                <option value="monthly invoice">Monthly Invoice</option>
+                                <option value="credit card">Credit Card</option>
+                                <option value="bank transfer">Bank Transfer</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Headquarters Postal Code</label>
+                            <input type="text" id="chat-postal-code" defaultValue="M5V 2T6" className="w-full mt-1 p-2 bg-slate-50 border border-slate-200 rounded-lg text-[13px] text-slate-700 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all" />
+                        </div>
+                        <div>
+                            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Coverage Effective Date</label>
+                            <input type="date" id="chat-coverage-date" defaultValue="2026-07-01" className="w-full mt-1 p-2 bg-slate-50 border border-slate-200 rounded-lg text-[13px] text-slate-700 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all" />
+                        </div>
+                        <button 
+                            onClick={(e) => {
+                                const email = (document.getElementById('chat-billing-email') as HTMLInputElement).value;
+                                const method = (document.getElementById('chat-payment-method') as HTMLSelectElement).value;
+                                const postal = (document.getElementById('chat-postal-code') as HTMLInputElement).value;
+                                const date = (document.getElementById('chat-coverage-date') as HTMLInputElement).value;
+                                
+                                handleSend(`Billing contact is ${email}. Payment method is ${method}. Postal code is ${postal}. Coverage starts ${date}.`);
+                            }}
+                            className="w-full py-2.5 bg-[#1e3a5f] text-white rounded-lg font-bold text-[13px] hover:bg-blue-700 hover:shadow-md transition-all mt-1 flex justify-center items-center gap-2"
+                        >
+                            Submit Details
+                        </button>
+                    </div>
+                </div>
+            );
+        }
+
         // Handle Tables
         if (text.includes('|') && text.includes('\n|')) {
             const lines = text.trim().split('\n');
@@ -215,6 +274,7 @@ export default function RightChatPanel() {
     const [pendingContext, setPendingContext] = useState<string | null>(null); // NEW: Track conversational state
     const [NinaStep, setNinaStep] = useState<number>(0); // NEW: Track Nina Storyboard progress
     const [PurchaseStep, setPurchaseStep] = useState<number>(0); // NEW: Track Policy Purchase progress
+    const [OnboardingStep, setOnboardingStep] = useState<number>(0); // NEW: Track Onboarding Storyboard progress
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(true); // Toggle for sidebar expansion, default to collapsed
     const [previewImage, setPreviewImage] = useState<string | null>(null); // State for image zoom/modal
 
@@ -457,6 +517,7 @@ export default function RightChatPanel() {
             const cleanText = text
                 .replace(/\|.*\|/g, "") // Remove table rows
                 .replace(/!\[.*?\]\(.*?\)/g, "") // Remove images
+                .replace(/\[[A-Z_]+\]/g, "") // Remove UI tags like [MISSING_DETAILS_FORM]
                 .replace(/\*+/g, "") // Remove bold/italic formatting
                 .trim();
 
@@ -683,6 +744,7 @@ export default function RightChatPanel() {
         ]);
         setNinaStep(0);
         setPurchaseStep(0);
+        setOnboardingStep(0);
         setPendingContext(null);
         setInputValue("");
         setIsTyping(false);
@@ -821,6 +883,28 @@ export default function RightChatPanel() {
         // If we are in the Nina storyboard flow waiting for a bill (Scene 4)
         if (NinaStep === 3) {
             handleSend("Uploaded bill"); // Trigger next step in Nina flow via send logic
+        } else if (OnboardingStep === 1) {
+            setOnboardingStep(2);
+            setIsTyping(true);
+            setTimeout(async () => {
+                setIsTyping(false);
+                await streamMessage(`Thanks. I received:\n• ABC Inc. signed contract\n• ABC Inc. customer intake form\n\nI’m extracting the onboarding details and mapping them to the Max setup fields.`, "assistant");
+                
+                setIsTyping(true);
+                await new Promise(r => setTimeout(r, 2000));
+                setIsTyping(false);
+                
+                await streamMessage("I found a related folder in OneDrive: **ABC Inc. - Commercial Group Benefits**.\n\nIt may contain billing, eligibility, and plan setup details. Do you want me to use this folder for the onboarding?", "assistant");
+            }, 1000);
+        } else if (window.location.pathname.includes('/corporate-customers/')) {
+            setIsTyping(true);
+            setTimeout(async () => {
+                setIsTyping(false);
+                window.dispatchEvent(new CustomEvent('fill-onboarding-form', {
+                    detail: { fileName: file.name }
+                }));
+                await streamMessage(`I have filled the details from **${file.name}**. Please review once before submit.`, "assistant");
+            }, 1500);
         } else {
             setIsTyping(true);
             setTimeout(async () => {
@@ -1119,12 +1203,24 @@ export default function RightChatPanel() {
                 if (positiveResponses.some(r => query.includes(r))) {
                     setPendingContext(null);
                     localStorage.setItem("max_guide_step", "add_customer");
+                    localStorage.setItem("onboarding_type", "sample");
                     router.push("/corporate-customers");
                     return;
                 } else if (negativeResponses.some(r => query.includes(r))) {
                     setPendingContext(null);
                     if (query.includes("real")) {
-                        await streamMessage("Alright, let's set up a real customer. Navigate to the Corporate Customers page and click 'Add New Customer'.", "assistant");
+                        setOnboardingStep(1);
+                        setNinaStep(0);
+                        setPurchaseStep(0);
+                        localStorage.setItem("onboarding_type", "real");
+                        
+                        setIsTyping(false);
+                        await streamMessage("Got it. I'll start the Corporate Customer Onboarding workflow for ABC Inc.\n\nThis workflow requires 33 fields across customer profile, policy details, billing, eligibility, contacts, and documents.\n\nTo begin, please upload any customer documents you have — contract, proposal, intake form, or enrollment file.", "assistant");
+                        
+                        // Automatically navigate to corporate customers page so the upload listener works
+                        if (!window.location.pathname.includes('/corporate-customers')) {
+                            router.push("/corporate-customers");
+                        }
                         return;
                     }
                 }
@@ -1429,7 +1525,7 @@ export default function RightChatPanel() {
                 return;
             }
 
-            if (query.includes("onboarding_query") || query.includes("onboarding")) {
+            if (query.includes("sold a new group insurance deal") || query.includes("abc inc") || (query.includes("set up") && query.includes("customer onboarding")) || query.includes("onboarding_query") || query.includes("onboarding") || query.includes("onboard")) {
                 if (isInterruptedRef.current) return;
                 setIsTyping(false);
                 const introText = "Got it. You want to know how to create a new customer or organization.";
@@ -1447,6 +1543,100 @@ export default function RightChatPanel() {
                     { label: "Use Real Customer", value: "real" },
                 ]);
                 return;
+            }
+
+            if (OnboardingStep === 2) {
+                if (query.includes("yes") || query.includes("use it")) {
+                    setOnboardingStep(3);
+                    setIsTyping(true);
+                    await new Promise(r => setTimeout(r, 800));
+                    setIsTyping(false);
+                    
+                    await streamMessage("Authorized. I’ll only use ABC Inc.-related files for this onboarding workflow.", "assistant");
+                    
+                    setIsTyping(true);
+                    await new Promise(r => setTimeout(r, 1500));
+                    setIsTyping(false);
+                    
+                    await streamMessage("I found 29 of the 33 required fields. Here’s what I was able to complete:\n\nCompany name: ABC Inc.\nIndustry: Manufacturing\nCountry: Canada\nCustomer type: Corporate group insurance\nPlan category: Group benefits\nPrimary contact: Sarah Thompson\nEmployee count: 184\nDocuments attached: Contract, intake form, eligibility file\nBilling structure: Employer-sponsored group plan", "assistant");
+                    
+                    setIsTyping(true);
+                    await new Promise(r => setTimeout(r, 1000));
+                    setIsTyping(false);
+                    
+                    await streamMessage("I only need 4 missing details before I can complete the setup:[MISSING_DETAILS_FORM]", "assistant");
+                    return;
+                }
+            }
+            
+            if (OnboardingStep === 3) {
+                if (query.includes("finance") || query.includes("monthly") || query.includes("m5v") || query.includes("july") || query.includes("billing contact") || query.includes("coverage starts") || query.includes("Billing contact is")) {
+                    setOnboardingStep(5);
+                    setIsTyping(true);
+                    await new Promise(r => setTimeout(r, 1000));
+                    setIsTyping(false);
+                    
+                    await streamMessage("Perfect. I now have all 33 required fields. Opening customer onboarding workflow...", "assistant");
+                    
+                    // Clear any stale IndexedDB data to ensure a fresh start on page 1
+                    await deleteCorporate("abc-inc-onboarding");
+                    
+                    router.push("/corporate-customers/abc-inc-onboarding");
+                    
+                    setIsTyping(true);
+                    await new Promise(r => setTimeout(r, 1500));
+                    setIsTyping(false);
+                    
+                    // Dispatch the event to fill the UI on page 1
+                    window.dispatchEvent(new CustomEvent('fill-onboarding-form', {
+                        detail: { fileName: 'contract and intake form' }
+                    }));
+                    
+                    await streamMessage("I filled the onboarding form using the uploaded documents and authorized ABC Inc. folder.\n\nPlease review the highlighted fields before submitting.", "assistant");
+                    return;
+                }
+            }
+            
+            if (OnboardingStep === 5) {
+                if (query.includes("looks good") || query.includes("what fields") || query.includes("manually")) {
+                    setOnboardingStep(6);
+                    setIsTyping(true);
+                    await new Promise(r => setTimeout(r, 800));
+                    setIsTyping(false);
+                    
+                    await streamMessage("You provided these 4 fields manually:\n• Billing contact email\n• Payment method\n• Headquarters postal code\n• Coverage effective date\n\nThe remaining 29 fields were extracted from the contract, intake form, and ABC Inc. folder.", "assistant");
+                    return;
+                }
+            }
+            
+            if (OnboardingStep === 6) {
+                if (query.includes("submit") || query.includes("correct") || query.includes("everything looks")) {
+                    setOnboardingStep(7);
+                    setIsTyping(true);
+                    await new Promise(r => setTimeout(r, 500));
+                    setIsTyping(false);
+                    
+                    await streamMessage("Before submitting, please confirm you’ve reviewed the customer profile, billing details, coverage date, and attached documents.", "assistant");
+                    return;
+                }
+            }
+            
+            if (OnboardingStep === 7) {
+                if (query.includes("confirm") || query.includes("yes")) {
+                    setOnboardingStep(0);
+                    setIsTyping(true);
+                    await new Promise(r => setTimeout(r, 500));
+                    setIsTyping(false);
+                    
+                    await streamMessage("Submitting ABC Inc. onboarding request now.", "assistant");
+                    
+                    setIsTyping(true);
+                    await new Promise(r => setTimeout(r, 2000));
+                    setIsTyping(false);
+                    
+                    await streamMessage("ABC Inc. has been submitted for onboarding.\n\nI also created an audit summary showing:\n• Which fields were extracted from documents\n• Which fields you provided manually\n• Which documents were used\n• Submission time and workflow status", "assistant");
+                    return;
+                }
             }
 
             if (

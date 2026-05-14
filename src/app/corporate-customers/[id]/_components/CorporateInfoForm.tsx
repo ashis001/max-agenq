@@ -415,11 +415,51 @@ export function CorporateInfoForm({ engine }: { engine: ReturnType<typeof useCor
         // Logic moved into runGuide for automated flow
     }, [emailValue, roleValue, isEmailHighlighted, isRoleHighlighted, setValue, handleSubmit]);
 
+    useEffect(() => {
+        const handleFillForm = (e: any) => {
+            setValue("broker", "Sarah Johnson-ADVISOR-1001");
+            setValue("selectProfile", "Corporate Insurance");
+            setValue("paymentPlatform", "AuthorizeNet");
+            setValue("name", "ABC Inc.");
+            setValue("provincialOffices", "Toronto");
+            setValue("policyStartDate", "2026-07-01");
+            setValue("contactEmail", "finance@abcinc.ca");
+            setValue("address.street1", "123 Main St");
+            setValue("address.city", "Toronto");
+            setValue("address.province", "Ontario");
+            setValue("address.country", "Canada");
+            setValue("address.postalCode", "M5V 2T6");
+            setValue("contacts.0.firstName", "Sarah");
+            setValue("contacts.0.lastName", "Thompson");
+            setValue("contacts.0.phone", "555-123-4567");
+            setValue("contacts.0.email", "finance@abcinc.ca");
+            setValue("contacts.0.role", "HR Admin Access");
+            setValue("waitingPeriodInitial", "yes");
+            setValue("waitingPeriodNewHires", "30 Days");
+            setValue("defineCoverageTiers", "yes");
+            setValue("paymentMethod", "monthly invoice");
+            setValue("showEmployerName", "yes");
+            setValue("employeeCount", 184);
+
+            setIsSubmittingHighlighted(true);
+        };
+
+        window.addEventListener('fill-onboarding-form', handleFillForm);
+        return () => window.removeEventListener('fill-onboarding-form', handleFillForm);
+    }, [setValue]);
+
     const onSubmit: SubmitHandler<FormValues> = async (data) => {
         try {
-            // If the guide was active or recently finished, signal the next step
-            if (activeFillingField || isSubmittingHighlighted) {
-                localStorage.setItem("max_guide_step", "tier_config");
+            // Check actual localStorage to avoid React state race conditions.
+            // Sample guide already sets "tier_config" before calling handleSubmit.
+            if (localStorage.getItem("max_guide_step") === "tier_config") {
+                // Keep sample guide's value — do nothing
+            } else {
+                const type = localStorage.getItem("onboarding_type");
+                if (type === "real") {
+                    localStorage.setItem("max_guide_step", "tier_config_real");
+                    setIsWorkflowActive(true);
+                }
             }
 
             updateCorporateInfo({

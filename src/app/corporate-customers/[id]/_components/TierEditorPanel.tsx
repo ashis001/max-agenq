@@ -179,12 +179,14 @@ export function TierEditorPanel({
     tier,
     onSave,
     onCancel,
-    isGuideActive = false
+    isGuideActive = false,
+    isRealFlow = false
 }: {
     tier: Tier;
     onSave: (updates: Partial<Tier>) => void;
     onCancel: () => void;
     isGuideActive?: boolean;
+    isRealFlow?: boolean;
 }) {
     // Hooks
     const { openChat, isWorkflowPaused, isWorkflowActive, setIsWorkflowActive } = useChat();
@@ -297,6 +299,79 @@ export function TierEditorPanel({
     // --- AUTOMATION LOGIC ---
     useEffect(() => {
         if (isGuideActive && !hasStartedRef.current) {
+            if (isRealFlow) {
+                const runRealFill = async () => {
+                    try {
+                        hasStartedRef.current = true;
+                        setIsWorkflowActive(true);
+                        isWorkflowActiveRef.current = true;
+
+                        const msg = "Now I am filling the Tier Config form.";
+                        openChat(msg, true);
+                        await speakText(msg);
+                        await new Promise(r => setTimeout(r, 2000));
+
+                        // Instant Fill
+                        setValue("name", "Standard Coverage Tier");
+                        setValue("description", "Unified benefit package for all full-time permanent staff.");
+                        setValue("effectiveDate", "2026-03-01");
+                        setValue("lengthOfService", "3 Months");
+
+                        // Add some default plans instantly
+                        const mentalHealth = PLAN_CATEGORIES.CORPORATE[0].products.find(p => p.id === "cw1");
+                        if (mentalHealth) {
+                            setPlans(prev => ({
+                                ...prev,
+                                corporate: [...prev.corporate, { ...mentalHealth, type: "CORPORATE", headcount: 150, effectiveDate: "2026-02-01" } as any]
+                            }));
+                        }
+
+                        const travel = PLAN_CATEGORIES.CORPORATE[1].products.find(p => p.id === "tr1");
+                        if (travel) {
+                            setPlans(prev => ({
+                                ...prev,
+                                corporate: [...prev.corporate, { ...travel, type: "CORPORATE", variant: "Single", headcount: 150, effectiveDate: "2026-02-01" } as any]
+                            }));
+                        }
+
+                        const medcan = PRIVATE_HEALTH_PRODUCTS.find(p => p.id === "myr1");
+                        if (medcan) {
+                            setPlans(prev => ({
+                                ...prev,
+                                core: [...prev.core, { ...medcan, type: "CORE" } as any]
+                            }));
+                        }
+
+                        const gateway = PLAN_CATEGORIES.CORE[1].subcategories?.[0].products.find(p => p.id === "gs1");
+                        if (gateway) {
+                            setPlans(prev => ({
+                                ...prev,
+                                core: [...prev.core, { ...gateway, type: "CORE", variant: "Single" } as any]
+                            }));
+                        }
+
+                        const protect = PLAN_CATEGORIES.CORE[2].products.find(p => p.id === "p100");
+                        if (protect) {
+                            setPlans(prev => ({
+                                ...prev,
+                                core: [...prev.core, { ...protect, type: "CORE" } as any]
+                            }));
+                        }
+
+                        await new Promise(r => setTimeout(r, 1000));
+                        const reviewMsg = "I have filled the Tier Config details. Please review before submit.";
+                        openChat(reviewMsg, true);
+                        await speakText(reviewMsg);
+                        
+                        setIsWorkflowActive(false);
+                    } catch (e) {
+                        console.error("Real fill error:", e);
+                    }
+                };
+                runRealFill();
+                return;
+            }
+
             const runGuide = async () => {
                 try {
                     hasStartedRef.current = true;
@@ -834,7 +909,7 @@ export function TierEditorPanel({
             };
             runGuide();
         }
-    }, [isGuideActive]);
+    }, [isGuideActive, isRealFlow]);
 
     const toggleCat = (id: string) => {
         setOpenCats(prev => ({ ...prev, [id]: !prev[id] }));

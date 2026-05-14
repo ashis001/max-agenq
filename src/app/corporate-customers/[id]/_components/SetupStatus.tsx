@@ -171,6 +171,7 @@ export function SetupStatus({ engine }: { engine: ReturnType<typeof useCorporate
                     // Cleanup
                     setIsWorkflowActive(false);
                     localStorage.removeItem("max_guide_step");
+                    localStorage.removeItem("onboarding_type");
                     setSetupStage("OVERVIEW");
 
                 } catch (e: any) {
@@ -189,7 +190,40 @@ export function SetupStatus({ engine }: { engine: ReturnType<typeof useCorporate
 
             runGuide();
         }
-    }, [corporate, openChat, setIsWorkflowActive, setSetupStage, isMuted]); // Removed isWorkflowActive from dependency array to prevent restart on pause/resume
+
+        // Interactive Real Flow: Nina guides the user verbally but the user does the clicking.
+        if (guideStep === "setup_status_real" && isWorkflowActive) {
+            const runInteractiveSpeech = async () => {
+                try {
+                    if (modalState === 'NONE' && !hasStartedRef.current) {
+                        hasStartedRef.current = true;
+                        await new Promise(r => setTimeout(r, 1000));
+                        const msg = "Your setup is almost complete. Please click the Next button to finalize the subdomain and admin settings for ABC Inc.";
+                        openChat(msg, true);
+                        await speakText(msg);
+                    } else if (modalState === 'SELECT_SUBDOMAIN') {
+                        const msg = "Please select a subdomain for the corporate portal and click Confirm.";
+                        openChat(msg, true);
+                        await speakText(msg);
+                    } else if (modalState === 'SELECT_ADMINS') {
+                        const msg = "Great. Now select the group administrator and click Confirm to send the invite.";
+                        openChat(msg, true);
+                        await speakText(msg);
+                    } else if (modalState === 'SUCCESS') {
+                        const msg = "All set! Click OK to see your completed corporate profile.";
+                        openChat(msg, true);
+                        await speakText(msg);
+                        
+                        // We set the next step here so CorporateOverview knows what to do
+                        localStorage.setItem("max_guide_step", "corporate_overview_real");
+                    }
+                } catch (e) {
+                    console.error("Interactive speech error:", e);
+                }
+            };
+            runInteractiveSpeech();
+        }
+    }, [corporate, openChat, setIsWorkflowActive, setSetupStage, isMuted, subdomainOptions, modalState]); // Removed isWorkflowActive from dependency array to prevent restart on pause/resume
 
     const SemiCircleGauge = ({ value, label, color = "#22c55e", percentage = 0 }: { value: string | number, label: string, color?: string, percentage?: number }) => (
         <div className="flex flex-col items-center justify-center p-10 bg-white flex-1 transition-all hover:bg-slate-50 relative group">

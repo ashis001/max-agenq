@@ -16,6 +16,7 @@ export function TierTable({ engine }: { engine: ReturnType<typeof useCorporateEn
     const [guideActive, setGuideActive] = useState(false);
     const hasStartedRef = useRef(false);
     const finalStepStartedRef = useRef(false);
+    const isRealFlowRef = useRef(false);
     const [activeFillingField, setActiveFillingField] = useState<string | null>(null);
     const [pointerPos, setPointerPos] = useState<{ top: number, left: number } | null>(null);
     const tableRef = useRef<HTMLDivElement>(null);
@@ -74,11 +75,17 @@ export function TierTable({ engine }: { engine: ReturnType<typeof useCorporateEn
 
         // Bridge: If workflow was active on previous page, ensure it continues here
         if (!guideStep && isWorkflowActive && corporate.stage === "TIERS" && !hasStartedRef.current) {
-            localStorage.setItem("max_guide_step", "tier_config");
+            const type = localStorage.getItem("onboarding_type");
+            if (type === "real") {
+                localStorage.setItem("max_guide_step", "tier_config_real");
+            } else {
+                localStorage.setItem("max_guide_step", "tier_config");
+            }
             return;
         }
 
         if (guideStep === "tier_config" && !hasStartedRef.current) {
+            isRealFlowRef.current = false;
             const runGuide = async () => {
                 try {
                     hasStartedRef.current = true;
@@ -132,6 +139,38 @@ export function TierTable({ engine }: { engine: ReturnType<typeof useCorporateEn
                 }
             };
             runGuide();
+        }
+
+        // Real data workflow guide for tier config
+        if (guideStep === "tier_config_real" && !hasStartedRef.current) {
+            isRealFlowRef.current = true;
+            const runRealGuide = async () => {
+                try {
+                    hasStartedRef.current = true;
+                    setIsWorkflowActive(true);
+                    isWorkflowActiveRef.current = true;
+
+                    const msg = "Now I am heading toward the tier config page. Let me configure the coverage tiers for your organization.";
+                    openChat(msg, true);
+                    await speakText(msg);
+
+                    await delay(1000);
+
+                    const addBtn = document.getElementById("add-tier-btn");
+                    if (addBtn) {
+                        setGuideActive(true);
+                        handleAddTier();
+                        localStorage.removeItem("max_guide_step");
+                    }
+                } catch (e: any) {
+                    if (e.message === "WorkflowCancelled") {
+                        console.log("TierTable real workflow cancelled");
+                        setGuideActive(false);
+                        setIsWorkflowActive(false);
+                    }
+                }
+            };
+            runRealGuide();
         } else if (corporate.stage === "TIERS" && isWorkflowActive && !hasStartedRef.current) {
             // Additional check: if we're in TIERS stage with workflow active but no guide step set,
             // it might mean we're continuing from previous workflow
@@ -258,8 +297,28 @@ export function TierTable({ engine }: { engine: ReturnType<typeof useCorporateEn
             runFinalStep();
         }
 
+        // Handle "review before Next" for real data flow (user clicks Next manually)
+        if (guideStep === "tier_review_real" && !finalStepStartedRef.current) {
+            finalStepStartedRef.current = true;
+            setIsWorkflowActive(false);
+
+            const runReviewStep = async () => {
+                try {
+                    // Use standard timeout instead of cancellable delay to avoid WorkflowCancelled error
+                    await new Promise(r => setTimeout(r, 1000));
+
+                    const msg = "The tier configuration for ABC Inc. is complete. Please review the summary and click the Next button to finalize the setup.";
+                    openChat(msg, true);
+                    await speakText(msg);
+                } catch (e: any) {
+                    console.error("Tier review step error:", e);
+                }
+            };
+            runReviewStep();
+        }
+
         // Reset final step ref if we're not on that step anymore
-        if (guideStep !== "tier_complete_next" && finalStepStartedRef.current) {
+        if (guideStep !== "tier_complete_next" && guideStep !== "tier_review_real" && finalStepStartedRef.current) {
             finalStepStartedRef.current = false;
         }
     }, [corporate.stage, isWorkflowActive, corporate.tiers]);
@@ -277,13 +336,19 @@ export function TierTable({ engine }: { engine: ReturnType<typeof useCorporateEn
             <TierEditorPanel
                 tier={editingTier}
                 isGuideActive={guideActive}
+                isRealFlow={isRealFlowRef.current}
                 onSave={(updates: Partial<Tier>) => {
                     engine.updateTier(editingTier.id, updates);
                     setEditingTierId(null);
 
                     // If this was part of a guide workflow, continue to next step
                     if (guideActive) {
-                        localStorage.setItem("max_guide_step", "tier_complete_next");
+                        if (isRealFlowRef.current) {
+                            localStorage.setItem("max_guide_step", "tier_review_real");
+                            isRealFlowRef.current = false;
+                        } else {
+                            localStorage.setItem("max_guide_step", "tier_complete_next");
+                        }
                     }
                     setGuideActive(false); // Reset guide state on close
                 }}
@@ -460,7 +525,14 @@ export function TierTable({ engine }: { engine: ReturnType<typeof useCorporateEn
                 </button>
                 <button
                     id="tier-next-btn"
-                    onClick={() => attemptAdvance()}
+                    onClick={() => {
+                        const type = localStorage.getItem("onboarding_type");
+                        if (type === "real") {
+                            localStorage.setItem("max_guide_step", "setup_status_real");
+                            setIsWorkflowActive(true);
+                        }
+                        attemptAdvance();
+                    }}
                     className={clsx(
                         "flex items-center gap-1.5 rounded-xl bg-[#0a1e3b] px-6 py-2.5 text-xs font-bold text-white shadow-lg shadow-blue-900/20 transition-all tracking-wide uppercase",
                         activeFillingField === "tier-next-btn" ? "ring-4 ring-blue-500/50 scale-105 shadow-2xl z-50" : "hover:bg-blue-900 hover:-translate-y-0.5"

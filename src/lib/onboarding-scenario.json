@@ -1,0 +1,215 @@
+{
+  "workflow": {
+    "name": "Corporate Customer Onboarding",
+    "software": "Max",
+    "customer": {
+      "name": "ABC Inc.",
+      "industry": "Manufacturing",
+      "country": "Canada",
+      "customerType": "Corporate group insurance",
+      "planCategory": "Group benefits",
+      "primaryContact": "Sarah Thompson",
+      "employeeCount": 184,
+      "billingStructure": "Employer-sponsored group plan",
+      "billingContactEmail": "finance@abcinc.ca",
+      "paymentMethod": "monthly invoice",
+      "headquartersPostalCode": "M5V 2T6",
+      "coverageEffectiveDate": "July 1, 2026"
+    },
+    "documents": [
+      "ABC Inc. signed contract",
+      "ABC Inc. customer intake form",
+      "eligibility file"
+    ],
+    "connectedSources": [
+      "OneDrive: ABC Inc. - Commercial Group Benefits"
+    ],
+    "metadata": {
+      "totalRequiredFields": 33,
+      "extractedFields": 29,
+      "manualFields": 4
+    },
+    "scenes": [
+      {
+        "sceneId": 1,
+        "title": "Broker opens Max software",
+        "actions": [
+          {
+            "actor": "Broker",
+            "text": "NINA, I sold a new group insurance deal to ABC Inc. Set up the customer onboarding."
+          },
+          {
+            "actor": "NINA",
+            "text": "Got it. I’ll start the Corporate Customer Onboarding workflow for ABC Inc. This workflow requires 33 fields across customer profile, policy details, billing, eligibility, contacts, and documents. To begin, please upload any customer documents you have — contract, proposal, intake form, or enrollment file."
+          }
+        ]
+      },
+      {
+        "sceneId": 2,
+        "title": "Broker uploads documents",
+        "actions": [
+          {
+            "actor": "Broker",
+            "text": "I have the signed contract and the customer intake form. Uploading them now."
+          },
+          {
+            "actor": "NINA",
+            "text": "Thanks. I received: ABC Inc. signed contract, ABC Inc. customer intake form. I’m extracting the onboarding details and mapping them to the Max setup fields."
+          },
+          {
+            "actor": "NINA_Progress",
+            "tasks": [
+              "Reading contract…",
+              "Extracting intake form…",
+              "Detecting required onboarding fields…",
+              "Mapping data to customer profile…",
+              "Checking for missing fields…"
+            ]
+          }
+        ]
+      },
+      {
+        "sceneId": 3,
+        "title": "NINA asks for permission to use connected source",
+        "actions": [
+          {
+            "actor": "NINA",
+            "text": "I found a related folder in OneDrive: ABC Inc. - Commercial Group Benefits. It may contain billing, eligibility, and plan setup details. Do you want me to use this folder for the onboarding?"
+          },
+          {
+            "actor": "Broker",
+            "text": "Yes, use it."
+          },
+          {
+            "actor": "NINA",
+            "text": "Authorized. I’ll only use ABC Inc.-related files for this onboarding workflow."
+          },
+          {
+            "actor": "NINA_Progress",
+            "tasks": [
+              "Scanning ABC Inc. folder…",
+              "Extracting plan details…",
+              "Matching billing information…",
+              "Attaching supporting documents…"
+            ]
+          }
+        ]
+      },
+      {
+        "sceneId": 4,
+        "title": "NINA summarizes what she found",
+        "actions": [
+          {
+            "actor": "NINA",
+            "text": "I found 29 of the 33 required fields. Here’s what I was able to complete: Company name: ABC Inc., Industry: Manufacturing, Country: Canada, Customer type: Corporate group insurance, Plan category: Group benefits, Primary contact: Sarah Thompson, Employee count: 184, Documents attached: Contract, intake form, eligibility file, Billing structure: Employer-sponsored group plan. I only need 4 missing details before I can complete the setup."
+          }
+        ]
+      },
+      {
+        "sceneId": 5,
+        "title": "NINA asks only for missing details",
+        "actions": [
+          {
+            "actor": "NINA",
+            "text": "Please provide these missing details: Billing contact email, Payment method, Headquarters postal code, Coverage effective date."
+          },
+          {
+            "actor": "Broker",
+            "text": "Billing contact is finance@abcinc.ca. Payment method is monthly invoice. Postal code is M5V 2T6. Coverage starts July 1, 2026."
+          },
+          {
+            "actor": "NINA",
+            "text": "Perfect. I now have all 33 required fields. I’ll fill the Max onboarding form now."
+          }
+        ]
+      },
+      {
+        "sceneId": 6,
+        "title": "NINA fills the product UI",
+        "actions": [
+          {
+            "actor": "NINA_Progress",
+            "tasks": [
+              "Opening customer onboarding workflow…",
+              "Creating ABC Inc. customer profile…",
+              "Filling company details…",
+              "Adding policy and plan information…",
+              "Adding billing details…",
+              "Attaching source documents…",
+              "Validating required fields…"
+            ]
+          },
+          {
+            "actor": "NINA",
+            "text": "The ABC Inc. onboarding form is complete. You can review the summary here, or open the Max workflow to see the fields filled inside the product."
+          },
+          {
+            "actor": "Broker",
+            "text": "Show me in the product."
+          },
+          {
+            "actor": "NINA",
+            "text": "Opening the completed onboarding form."
+          }
+        ]
+      },
+      {
+        "sceneId": 7,
+        "title": "Broker sees the form filled",
+        "actions": [
+          {
+            "actor": "UI_Action",
+            "text": "NINA minimizes. The Max onboarding form is visible behind it, already completed."
+          },
+          {
+            "actor": "NINA",
+            "text": "I filled the onboarding form using the uploaded documents and authorized ABC Inc. folder. Please review the highlighted fields before submitting."
+          },
+          {
+            "actor": "Broker",
+            "text": "Looks good. What fields did I provide manually?"
+          },
+          {
+            "actor": "NINA",
+            "text": "You provided these 4 fields manually: Billing contact email, Payment method, Headquarters postal code, Coverage effective date. The remaining 29 fields were extracted from the contract, intake form, and ABC Inc. folder."
+          }
+        ]
+      },
+      {
+        "sceneId": 8,
+        "title": "Human review and submit",
+        "actions": [
+          {
+            "actor": "Broker",
+            "text": "Everything looks correct. Submit it."
+          },
+          {
+            "actor": "NINA",
+            "text": "Before submitting, please confirm you’ve reviewed the customer profile, billing details, coverage date, and attached documents."
+          },
+          {
+            "actor": "Broker",
+            "text": "Confirmed."
+          },
+          {
+            "actor": "NINA",
+            "text": "Submitting ABC Inc. onboarding request now."
+          },
+          {
+            "actor": "NINA_Progress",
+            "tasks": [
+              "Validating form…",
+              "Submitting onboarding request…",
+              "Saving audit summary…",
+              "Linking source documents…"
+            ]
+          },
+          {
+            "actor": "NINA",
+            "text": "ABC Inc. has been submitted for onboarding. I also created an audit summary showing: Which fields were extracted from documents, Which fields you provided manually, Which documents were used, Submission time and workflow status."
+          }
+        ]
+      }
+    ]
+  }
+}
