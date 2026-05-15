@@ -20,7 +20,7 @@ export function CorporateOverview({ engine }: { engine: ReturnType<typeof useCor
                 try {
                     await new Promise(r => setTimeout(r, 1500));
                     
-                    const msg = "Everything is set! Here is the final overview of ABC Inc.'s corporate profile. All tiers are active, and admin invites have been sent. I am now closing the onboarding workflow.";
+                    const msg = "Everything is set! Here is the final overview of Corporate profile. All tiers are active, and admin invites have been sent. I am now closing the onboarding workflow.";
                     openChat(msg, true);
                     await speakText(msg);
                     

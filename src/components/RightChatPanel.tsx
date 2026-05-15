@@ -66,12 +66,41 @@ interface ChatSession {
 }
 
 export default function RightChatPanel() {
+    const [statusIndicator, setStatusIndicator] = useState<{ text: string; emoji?: string } | null>(null);
     // Helper: Render Message Text with Table Support
     const renderMessageText = (text: string, sender: string) => {
+
+        // Handle Authorize Button
+        if (text.includes('[AUTHORIZE_BUTTON]')) {
+            const parts = text.split('[AUTHORIZE_BUTTON]');
+            return (
+                <div className="flex flex-col gap-2 w-full">
+                    <div className="whitespace-pre-wrap">{parts[0]}</div>
+                    <div className="my-2 p-4 bg-blue-50 border border-blue-100 rounded-xl shadow-sm flex flex-col gap-3 w-full">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-blue-100 rounded-lg text-blue-600">
+                                <span className="text-xl">🔐</span>
+                            </div>
+                            <div>
+                                <h4 className="text-[12px] font-bold text-slate-800">Connect OneDrive and Email</h4>
+                                <p className="text-[10px] text-slate-500 font-medium">Allow NINA to access customer-related folders and communications.</p>
+                            </div>
+                        </div>
+                        <button 
+                            onClick={() => handleSend("Authorize access")}
+                            className="w-full py-2.5 bg-[#1e3a5f] text-white rounded-lg font-bold text-[13px] hover:bg-blue-700 transition-all shadow-sm flex justify-center items-center gap-2"
+                        >
+                            Authorize
+                        </button>
+                    </div>
+                </div>
+            );
+        }
+
         // Handle Missing Details Form
         if (text.includes('[MISSING_DETAILS_FORM]')) {
             const parts = text.split('[MISSING_DETAILS_FORM]');
-            
+
             const renderPart = (partText: string) => {
                 return partText.split("**").map((p, i) =>
                     i % 2 === 1 ? (
@@ -87,15 +116,16 @@ export default function RightChatPanel() {
             return (
                 <div className="flex flex-col gap-2 w-full">
                     <div className="whitespace-pre-wrap">{renderPart(parts[0])}</div>
-                    
+
                     <div className="my-2 p-4 bg-white border border-slate-200 rounded-xl shadow-sm flex flex-col gap-3 w-full">
                         <div>
                             <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Billing Contact Email</label>
-                            <input type="email" id="chat-billing-email" defaultValue="finance@abcinc.ca" className="w-full mt-1 p-2 bg-slate-50 border border-slate-200 rounded-lg text-[13px] text-slate-700 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all" />
+                            <input type="email" id="chat-billing-email" placeholder="Enter billing contact email" className="w-full mt-1 p-2 bg-slate-50 border border-slate-200 rounded-lg text-[13px] text-slate-700 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all" />
                         </div>
                         <div>
                             <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Payment Method</label>
                             <select id="chat-payment-method" className="w-full mt-1 p-2 bg-slate-50 border border-slate-200 rounded-lg text-[13px] text-slate-700 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all">
+                                <option value="">Select payment method</option>
                                 <option value="monthly invoice">Monthly Invoice</option>
                                 <option value="credit card">Credit Card</option>
                                 <option value="bank transfer">Bank Transfer</option>
@@ -103,19 +133,19 @@ export default function RightChatPanel() {
                         </div>
                         <div>
                             <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Headquarters Postal Code</label>
-                            <input type="text" id="chat-postal-code" defaultValue="M5V 2T6" className="w-full mt-1 p-2 bg-slate-50 border border-slate-200 rounded-lg text-[13px] text-slate-700 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all" />
+                            <input type="text" id="chat-postal-code" placeholder="Enter postal code" className="w-full mt-1 p-2 bg-slate-50 border border-slate-200 rounded-lg text-[13px] text-slate-700 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all" />
                         </div>
                         <div>
                             <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Coverage Effective Date</label>
-                            <input type="date" id="chat-coverage-date" defaultValue="2026-07-01" className="w-full mt-1 p-2 bg-slate-50 border border-slate-200 rounded-lg text-[13px] text-slate-700 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all" />
+                            <input type="date" id="chat-coverage-date" className="w-full mt-1 p-2 bg-slate-50 border border-slate-200 rounded-lg text-[13px] text-slate-700 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all" />
                         </div>
-                        <button 
+                        <button
                             onClick={(e) => {
                                 const email = (document.getElementById('chat-billing-email') as HTMLInputElement).value;
                                 const method = (document.getElementById('chat-payment-method') as HTMLSelectElement).value;
                                 const postal = (document.getElementById('chat-postal-code') as HTMLInputElement).value;
                                 const date = (document.getElementById('chat-coverage-date') as HTMLInputElement).value;
-                                
+
                                 handleSend(`Billing contact is ${email}. Payment method is ${method}. Postal code is ${postal}. Coverage starts ${date}.`);
                             }}
                             className="w-full py-2.5 bg-[#1e3a5f] text-white rounded-lg font-bold text-[13px] hover:bg-blue-700 hover:shadow-md transition-all mt-1 flex justify-center items-center gap-2"
@@ -131,11 +161,11 @@ export default function RightChatPanel() {
         if (text.includes('|') && text.includes('\n|')) {
             const lines = text.trim().split('\n');
             const tableLines = lines.filter(l => l.trim().startsWith('|'));
-            
+
             if (tableLines.length >= 3) {
                 const headers = tableLines[0].split('|').filter(c => c.trim()).map(c => c.trim().replace(/\*\*/g, ''));
                 const rows = tableLines.slice(2).map(l => l.split('|').filter(c => c.trim()).map(c => c.trim()));
-                
+
                 return (
                     <div className="flex flex-col gap-3">
                         {/* Text before table */}
@@ -144,7 +174,7 @@ export default function RightChatPanel() {
                                 {lines.slice(0, lines.indexOf(tableLines[0])).join('\n')}
                             </div>
                         )}
-                        
+
                         <div className="overflow-x-auto my-1 rounded-xl border border-slate-200 shadow-sm bg-white">
                             <table className="min-w-full divide-y divide-slate-200 text-[11px]">
                                 <thead className="bg-slate-50/80 backdrop-blur-sm sticky top-0">
@@ -175,9 +205,9 @@ export default function RightChatPanel() {
                         </div>
 
                         {/* Text after table */}
-                        {lines[lines.length-1].trim().startsWith('|') ? null : (
-                             <div className="whitespace-pre-wrap mt-2">
-                                {lines.slice(lines.lastIndexOf(tableLines[tableLines.length-1]) + 1).join('\n')}
+                        {lines[lines.length - 1].trim().startsWith('|') ? null : (
+                            <div className="whitespace-pre-wrap mt-2">
+                                {lines.slice(lines.lastIndexOf(tableLines[tableLines.length - 1]) + 1).join('\n')}
                             </div>
                         )}
                     </div>
@@ -197,7 +227,7 @@ export default function RightChatPanel() {
                             const src = imgMatch[2];
                             return (
                                 <div key={index} className="my-4 relative w-[280px] group transition-all duration-300">
-                                    <div 
+                                    <div
                                         onClick={() => setPreviewImage(src)}
                                         className="cursor-zoom-in rounded-xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-500 border border-slate-200 group-hover:scale-[1.02] bg-white"
                                     >
@@ -512,7 +542,7 @@ export default function RightChatPanel() {
 
             setIsSpeaking(true);
             isSpeakingRef.current = true;
-            
+
             // Clean text to prevent speaking markdown tables, images, and formatting syntax
             const cleanText = text
                 .replace(/\|.*\|/g, "") // Remove table rows
@@ -539,9 +569,16 @@ export default function RightChatPanel() {
 
 
 
-    const streamMessage = async (text: string, sender: "assistant" | "user", actions?: { label: string; value: string }[]) => {
+    const streamMessage = async (text: string, sender: "assistant" | "user", actions?: { label: string; value: string }[], skipStream?: boolean) => {
         isInterruptedRef.current = false;
         const id = Date.now().toString();
+        const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+        if (skipStream) {
+            setMessages(prev => [...prev, { id, text, sender, timestamp, actions }]);
+            return;
+        }
+
         const baseMsg: Message = {
             id,
             text: "",
@@ -607,32 +644,36 @@ export default function RightChatPanel() {
         }
     };
 
+    const hasTriggeredGreetingRef = useRef(false);
+    const greetingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
     const triggerGreeting = async () => {
         isInterruptedRef.current = false;
-        const secondMsg = "What would you like to do today? I can help you to onboard a new company or file a claim or onboard a new policy provider.";
-        const thirdMsg = "You can talk to or you can type text here.";
+        
+        // Clear any existing pending greeting
+        if (greetingTimeoutRef.current) {
+            clearTimeout(greetingTimeoutRef.current);
+        }
 
-        const timer = setTimeout(async () => {
+        const secondMsg = "What would you like to do today? I can help you to onboard a new company, file a claim, or onboard a new policy provider.\n\nYou can talk to or you can type text here.";
+
+        greetingTimeoutRef.current = setTimeout(async () => {
             if (!isInterruptedRef.current) {
                 await streamMessage(secondMsg, "assistant");
             }
-            if (!isInterruptedRef.current) {
-                await streamMessage(thirdMsg, "assistant");
-            }
+            greetingTimeoutRef.current = null;
         }, 1000);
-        return () => clearTimeout(timer);
     };
 
-    // Handle Entry Logic (Popup vs Top Bar)
     useEffect(() => {
         if (isOpen) {
-            isInterruptedRef.current = false;
-
-            const secondMsg = "What would you like to do today? I can help you to onboard a new company or file a claim or onboard a new policy provider.";
-            const thirdMsg = "You can talk to or you can type text here.";
-
             // CASE A: Opened via Top Bar (or any direct external trigger)
             if (externalMessage) {
+                isInterruptedRef.current = false;
+                hasTriggeredGreetingRef.current = true; // Mark as triggered so Case B doesn't fire later
+                
+                const secondMsg = "What would you like to do today? I can help you to onboard a new company, file a claim, or onboard a new policy provider.\n\nYou can talk to or you can type text here.";
+                
                 const timer = setTimeout(async () => {
                     const isStandardGreeting = externalMessage.toLowerCase().includes("hi, i’m Nina") ||
                         externalMessage.toLowerCase().includes("hi, i'm Nina") ||
@@ -649,7 +690,7 @@ export default function RightChatPanel() {
                     if (isIntroQuestion) {
                         const hiddenGreeting: Message = {
                             id: "0",
-                            text: "Hi, I'm **Nina**. Your Assistant. Ask me anything",
+                            text: "Hi, I'm **Nina**. Your Assistant. I can help you with anything",
                             sender: "assistant",
                             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                         };
@@ -683,9 +724,8 @@ export default function RightChatPanel() {
 
                     if (isStandardGreeting) {
                         if (!isInterruptedRef.current) await streamMessage(secondMsg, "assistant");
-                        if (!isInterruptedRef.current) await streamMessage(thirdMsg, "assistant");
                     } else if (isIntroQuestion) {
-                        if (!isInterruptedRef.current) await streamMessage(thirdMsg, "assistant");
+                        // The intro question itself is the greeting, so we don't need to stream secondMsg again.
                     }
 
                     clearExternalMessage();
@@ -693,10 +733,12 @@ export default function RightChatPanel() {
                 return () => clearTimeout(timer);
             }
             // CASE B: Opened Fresh (no external message)
-            else if (messages.length === 0) {
+            else if (messages.length === 0 && !hasTriggeredGreetingRef.current) {
+                isInterruptedRef.current = false;
+                hasTriggeredGreetingRef.current = true;
                 const initialGreeting: Message = {
                     id: "1",
-                    text: "Hi, I'm **Nina**. Your Assistant. Ask me anything",
+                    text: "Hi, I'm **Nina**. Your Assistant. I can help you with anything",
                     sender: "assistant",
                     timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                 };
@@ -734,7 +776,7 @@ export default function RightChatPanel() {
         setMessages([
             {
                 id: "1",
-                text: "Hi, I'm **Nina**. Your Assistant. Ask me anything",
+                text: "Hi, I'm **Nina**. Your Assistant. I can help you with anything",
                 sender: "assistant",
                 timestamp: new Date().toLocaleTimeString([], {
                     hour: "2-digit",
@@ -750,6 +792,7 @@ export default function RightChatPanel() {
         setIsTyping(false);
 
         // Trigger the vocal greeting sequence
+        hasTriggeredGreetingRef.current = true; // Mark as triggered so the effect doesn't double-fire
         triggerGreeting();
     };
 
@@ -777,6 +820,16 @@ export default function RightChatPanel() {
         setHistory([]);
         resetChat();
     };
+
+    useEffect(() => {
+        if (!isOpen) {
+            hasTriggeredGreetingRef.current = false;
+            if (greetingTimeoutRef.current) {
+                clearTimeout(greetingTimeoutRef.current);
+                greetingTimeoutRef.current = null;
+            }
+        }
+    }, [isOpen]);
 
     useEffect(() => {
         scrollToBottom();
@@ -888,13 +941,23 @@ export default function RightChatPanel() {
             setIsTyping(true);
             setTimeout(async () => {
                 setIsTyping(false);
-                await streamMessage(`Thanks. I received:\n• ABC Inc. signed contract\n• ABC Inc. customer intake form\n\nI’m extracting the onboarding details and mapping them to the Max setup fields.`, "assistant");
+                await streamMessage(`Got it. Started onboarding.`, "assistant");
                 
                 setIsTyping(true);
-                await new Promise(r => setTimeout(r, 2000));
+                await new Promise(r => setTimeout(r, 800));
                 setIsTyping(false);
                 
-                await streamMessage("I found a related folder in OneDrive: **ABC Inc. - Commercial Group Benefits**.\n\nIt may contain billing, eligibility, and plan setup details. Do you want me to use this folder for the onboarding?", "assistant");
+                setStatusIndicator({ text: "Reading proposal", emoji: "📄" });
+                await new Promise(r => setTimeout(r, 1500));
+                
+                setStatusIndicator({ text: "Reading onboarding form", emoji: "📄" });
+                await new Promise(r => setTimeout(r, 1500));
+                
+                setStatusIndicator({ text: "Searching OneDrive for Northbridge Manufacturing Ltd.", emoji: "🔍" });
+                await new Promise(r => setTimeout(r, 2500));
+                
+                setStatusIndicator(null); // Hide before next message
+                await streamMessage("I found additional data in OneDrive and recent emails. I need your permission to access it.\n\n[AUTHORIZE_BUTTON]", "assistant");
             }, 1000);
         } else if (window.location.pathname.includes('/corporate-customers/')) {
             setIsTyping(true);
@@ -1117,7 +1180,7 @@ export default function RightChatPanel() {
                     await streamMessage("I’d be happy to. The **Bronze** and **Silver** plans are designed for individual basic needs with higher deductibles, whereas **Gold** and **Platinum** provide comprehensive protection with lower co-pays, higher limits, and international coverage.", "assistant");
                     await new Promise(r => setTimeout(r, 1500));
                 }
-                
+
                 setPurchaseStep(5);
                 setIsTyping(false);
                 const step5 = policyPurchase.steps[4];
@@ -1133,7 +1196,7 @@ export default function RightChatPanel() {
                     setIsTyping(true);
                     await new Promise(r => setTimeout(r, 1000));
                     setIsTyping(false);
-                    
+
                     // User requested to display the image before asking for the quote
                     await streamMessage("Here is the detailed about the Gold plan.\n![Gold Plan](/gold.png)", "assistant");
                     await new Promise(r => setTimeout(r, 1500));
@@ -1215,7 +1278,8 @@ export default function RightChatPanel() {
                         localStorage.setItem("onboarding_type", "real");
                         
                         setIsTyping(false);
-                        await streamMessage("Got it. I'll start the Corporate Customer Onboarding workflow for ABC Inc.\n\nThis workflow requires 33 fields across customer profile, policy details, billing, eligibility, contacts, and documents.\n\nTo begin, please upload any customer documents you have — contract, proposal, intake form, or enrollment file.", "assistant");
+                        const executionStartMsg = "Perfect. I’ll take care of the onboarding.\n\nThis setup involves 33 data points across customer profile, policy details, billing, eligibility, contacts, and documents. I’ll handle most of it for you.\n\nTo begin, share the company name and any documents or source: OneDrive, email, or upload.";
+                        await streamMessage(executionStartMsg, "assistant");
                         
                         // Automatically navigate to corporate customers page so the upload listener works
                         if (!window.location.pathname.includes('/corporate-customers')) {
@@ -1302,8 +1366,8 @@ export default function RightChatPanel() {
             const comparisonKeywords = policyPlans.prompts.comparison_keywords;
             const isPolicyComparisonQuery = comparisonKeywords.some((keyword: string) => query.includes(keyword)) ||
                 (query.includes("policy") && (query.includes("compare") || query.includes("plans") || query.includes("bronze") || query.includes("silver") || query.includes("gold")));
-            
-            const isSinglePlanQuery = (Object.keys(policyPlans.prompts.plan_specific) as (keyof typeof policyPlans.prompts.plan_specific)[]).some((plan) => 
+
+            const isSinglePlanQuery = (Object.keys(policyPlans.prompts.plan_specific) as (keyof typeof policyPlans.prompts.plan_specific)[]).some((plan) =>
                 policyPlans.prompts.plan_specific[plan].some((keyword: string) => query.includes(keyword))
             );
 
@@ -1398,9 +1462,9 @@ export default function RightChatPanel() {
             if (isSinglePlanQuery) {
                 if (isInterruptedRef.current) return;
                 setIsTyping(false);
-                
+
                 let selectedPlan: PolicyPlan | undefined;
-                
+
                 if (query.includes("bronze") || query.includes("basic") || query.includes("lowest") || query.includes("cheapest") || query.includes("entry")) {
                     selectedPlan = policyPlans.plans.find((p: PolicyPlan) => p.plan_id === "bronze");
                 } else if (query.includes("silver") || query.includes("standard") || query.includes("mid") || query.includes("middle")) {
@@ -1408,14 +1472,14 @@ export default function RightChatPanel() {
                 } else if (query.includes("gold") || query.includes("premium") || query.includes("top") || query.includes("best") || query.includes("comprehensive")) {
                     selectedPlan = policyPlans.plans.find((p: PolicyPlan) => p.plan_id === "gold");
                 }
-                
+
                 if (selectedPlan) {
                     let planDescription = `**${selectedPlan.plan_name} - $${selectedPlan.monthly_premium}/month**\n\n`;
-                    
+
                     planDescription += `💰 **Pricing:** $${selectedPlan.monthly_premium} per month (or $${selectedPlan.annual_premium} yearly). Your deductible will be $${selectedPlan.deductible}.\n\n`;
-                    
+
                     planDescription += `🏥 **Coverage Details:**\n`;
-                    
+
                     if (selectedPlan.features.hospitalization?.included) {
                         planDescription += `• Hospitalization: Up to $${selectedPlan.features.hospitalization.limit.toLocaleString()} (copay: $${selectedPlan.features.hospitalization.copay})\n`;
                     }
@@ -1431,21 +1495,21 @@ export default function RightChatPanel() {
                     if (selectedPlan.features.maternity?.included) {
                         planDescription += `• Maternity: Up to $${selectedPlan.features.maternity.limit.toLocaleString()} (copay: $${selectedPlan.features.maternity.copay})\n`;
                     }
-                    
+
                     planDescription += `\n🛡️ **Extras:**\n`;
                     selectedPlan.additional_benefits.forEach(b => {
                         planDescription += `• ${b}\n`;
                     });
-                    
+
                     planDescription += `\n👥 **Best For:** ${selectedPlan.suitable_for}\n`;
                     planDescription += `⭐ **Rating:** ${selectedPlan.rating}`;
-                    
+
                     await streamMessage(planDescription, "assistant");
-                    
+
                     setIsTyping(true);
                     await new Promise((resolve) => setTimeout(resolve, 300));
                     setIsTyping(false);
-                    
+
                     await streamMessage("Would you like to compare this with other plans or proceed with getting a quote?", "assistant", [
                         { label: "Compare All Plans", value: "compare_plans" },
                         { label: "Get Quote", value: "get_quote" }
@@ -1457,13 +1521,13 @@ export default function RightChatPanel() {
             if (query.includes("recommend") || query.includes("which plan") || query.includes("what plan") || query.includes("choose")) {
                 if (isInterruptedRef.current) return;
                 setIsTyping(false);
-                
+
                 await streamMessage("To help you choose the right plan, please tell me a bit about yourself:", "assistant");
-                
+
                 setIsTyping(true);
                 await new Promise((resolve) => setTimeout(resolve, 500));
                 setIsTyping(false);
-                
+
                 await streamMessage("Are you...?", "assistant", [
                     { label: "Young Individual / Single", value: "recommend_young" },
                     { label: "Couple / Young Family", value: "recommend_couple" },
@@ -1484,7 +1548,7 @@ export default function RightChatPanel() {
                 ]);
                 return;
             }
-            
+
             if (query.includes("recommend_couple") || query.includes("young family")) {
                 setIsTyping(false);
                 const rec = policyPlans.recommendations.couple;
@@ -1494,7 +1558,7 @@ export default function RightChatPanel() {
                 ]);
                 return;
             }
-            
+
             if (query.includes("recommend_family") || query.includes("family") || query.includes("kids")) {
                 setIsTyping(false);
                 const rec = policyPlans.recommendations.family_with_kids;
@@ -1504,7 +1568,7 @@ export default function RightChatPanel() {
                 ]);
                 return;
             }
-            
+
             if (query.includes("recommend_senior") || query.includes("senior")) {
                 setIsTyping(false);
                 const rec = policyPlans.recommendations.senior;
@@ -1514,7 +1578,7 @@ export default function RightChatPanel() {
                 ]);
                 return;
             }
-            
+
             if (query.includes("recommend_professional") || query.includes("business") || query.includes("professional")) {
                 setIsTyping(false);
                 const rec = policyPlans.recommendations.business_professional;
@@ -1525,116 +1589,152 @@ export default function RightChatPanel() {
                 return;
             }
 
-            if (query.includes("sold a new group insurance deal") || query.includes("abc inc") || (query.includes("set up") && query.includes("customer onboarding")) || query.includes("onboarding_query") || query.includes("onboarding") || query.includes("onboard")) {
+            if (query.includes("sold a new group insurance deal") || query.includes("northbridge") || (query.includes("set up") && query.includes("customer onboarding")) || query.includes("onboarding_query") || query.includes("onboarding") || query.includes("onboard")) {
                 if (isInterruptedRef.current) return;
                 setIsTyping(false);
-                const introText = "Got it. You want to know how to create a new customer or organization.";
-                await streamMessage(introText, "assistant");
+                const combinedIntro = "Got it. We can do these 2 ways.\n\n**Training Mode**: I walk you through each step, by using sample data.\n\n**Execution Mode**: I complete the setup with actual data on behalf of you, and then you just need to review it before submission.";
+                await streamMessage(combinedIntro, "assistant");
 
-                // Visual pause before follow-up typing animation
                 setIsTyping(true);
                 await new Promise((resolve) => setTimeout(resolve, 1000));
                 setIsTyping(false);
 
-                const followUpText = "Would you like to do a sample onboarding first?";
+                const followUpText = "What would you like?";
                 setPendingContext("onboarding_sample_prompt"); // Set the context for the next turn
                 await streamMessage(followUpText, "assistant", [
-                    { label: "Use Sample Data", value: "sample" },
-                    { label: "Use Real Customer", value: "real" },
+                    { label: "Training Mode (Sample)", value: "sample" },
+                    { label: "Execution Mode (Real Data)", value: "real" },
                 ]);
                 return;
             }
 
             if (OnboardingStep === 2) {
-                if (query.includes("yes") || query.includes("use it")) {
+                if (query.toLowerCase().includes("authorize") || query.includes("yes") || query.includes("use it")) {
                     setOnboardingStep(3);
-                    setIsTyping(true);
-                    await new Promise(r => setTimeout(r, 800));
                     setIsTyping(false);
                     
-                    await streamMessage("Authorized. I’ll only use ABC Inc.-related files for this onboarding workflow.", "assistant");
+                    setStatusIndicator({ text: "Access granted", emoji: "🔓" });
+                    await new Promise(r => setTimeout(r, 1200));
                     
-                    setIsTyping(true);
+                    setStatusIndicator({ text: "Opening customer folder", emoji: "📁" });
+                    await new Promise(r => setTimeout(r, 1200));
+                    
+                    setStatusIndicator({ text: "Scanning recent emails", emoji: "📧" });
                     await new Promise(r => setTimeout(r, 1500));
-                    setIsTyping(false);
                     
-                    await streamMessage("I found 29 of the 33 required fields. Here’s what I was able to complete:\n\nCompany name: ABC Inc.\nIndustry: Manufacturing\nCountry: Canada\nCustomer type: Corporate group insurance\nPlan category: Group benefits\nPrimary contact: Sarah Thompson\nEmployee count: 184\nDocuments attached: Contract, intake form, eligibility file\nBilling structure: Employer-sponsored group plan", "assistant");
+                    setStatusIndicator({ text: "Matching data to onboarding fields", emoji: "📄" });
+                    await new Promise(r => setTimeout(r, 2000));
+                    
+                    setStatusIndicator(null);
+
+                    await streamMessage("Onboarding setup is ready for review.", "assistant");
                     
                     setIsTyping(true);
                     await new Promise(r => setTimeout(r, 1000));
                     setIsTyping(false);
+
+                    await streamMessage("Here is the Onboarding Summary for **Northbridge Manufacturing Ltd.** below:", "assistant");
                     
-                    await streamMessage("I only need 4 missing details before I can complete the setup:[MISSING_DETAILS_FORM]", "assistant");
+                    const summaryTable = `| Section | Field | Status |
+| :--- | :--- | :--- |
+| Customer Profile | Legal Name | ✅ Completed |
+| Customer Profile | Address | ✅ Completed |
+| Customer Profile | Industry | ✅ Completed |
+| Policy Details | Plan Type | ✅ Completed |
+| Policy Details | Coverage Details | ✅ Completed |
+| Policy Details | Effective Date | ✅ Completed |
+| Eligibility Rules | Employee Class | ✅ Completed |
+| Eligibility Rules | Waiting Period | ⚠️ Pending |
+| Eligibility Rules | Minimum Hours | ✅ Completed |
+| Billing Setup | Billing Frequency | ✅ Completed |
+| Billing Setup | Billing Start Date | ⚠️ Pending |
+| Billing Setup | Payment Method | ✅ Completed |
+| Contacts | HR Contact Name | ✅ Completed |
+| Contacts | HR Contact Email | ✅ Completed |
+| Contacts | HR Contact Phone | ⚠️ Pending |
+| Employee Data | Total Employee Count | ⚠️ Pending |
+| Employee Data | Employee Census File | ⚠️ Pending |
+| Documents | Signed Proposal | ✅ Completed |
+| Documents | Onboarding Form | ✅ Completed |
+| Documents | Enrollment File | ⚠️ Pending |`;
+                    
+                    await streamMessage(summaryTable, "assistant", undefined, true); // Added skipStream parameter
+
+                    setIsTyping(true);
+                    await new Promise(r => setTimeout(r, 1500));
+                    setIsTyping(false);
+                    
+                    await streamMessage("I’ve completed 29 of 33 data points. I just need a few details to finish: **billing contact email**, **payment method**, **headquarters postal code**, and **coverage effective date**.[MISSING_DETAILS_FORM]", "assistant");
                     return;
                 }
             }
-            
+
             if (OnboardingStep === 3) {
                 if (query.includes("finance") || query.includes("monthly") || query.includes("m5v") || query.includes("july") || query.includes("billing contact") || query.includes("coverage starts") || query.includes("Billing contact is")) {
                     setOnboardingStep(5);
                     setIsTyping(true);
                     await new Promise(r => setTimeout(r, 1000));
                     setIsTyping(false);
-                    
-                    await streamMessage("Perfect. I now have all 33 required fields. Opening customer onboarding workflow...", "assistant");
-                    
+
+                    await streamMessage("All set. Onboarding for Northbridge Manufacturing Ltd. is complete and ready to submit.", "assistant");
+
                     // Clear any stale IndexedDB data to ensure a fresh start on page 1
-                    await deleteCorporate("abc-inc-onboarding");
-                    
-                    router.push("/corporate-customers/abc-inc-onboarding");
-                    
+                    await deleteCorporate("northbridge-onboarding");
+
+                    router.push("/corporate-customers/northbridge-onboarding");
+
                     setIsTyping(true);
                     await new Promise(r => setTimeout(r, 1500));
                     setIsTyping(false);
-                    
+
                     // Dispatch the event to fill the UI on page 1
                     window.dispatchEvent(new CustomEvent('fill-onboarding-form', {
                         detail: { fileName: 'contract and intake form' }
                     }));
-                    
-                    await streamMessage("I filled the onboarding form using the uploaded documents and authorized ABC Inc. folder.\n\nPlease review the highlighted fields before submitting.", "assistant");
+
+                    await streamMessage("I filled the onboarding form using the uploaded documents and authorized Northbridge folder.\n\nPlease review the highlighted fields before submitting.", "assistant");
                     return;
                 }
             }
-            
+
             if (OnboardingStep === 5) {
                 if (query.includes("looks good") || query.includes("what fields") || query.includes("manually")) {
                     setOnboardingStep(6);
                     setIsTyping(true);
                     await new Promise(r => setTimeout(r, 800));
                     setIsTyping(false);
-                    
-                    await streamMessage("You provided these 4 fields manually:\n• Billing contact email\n• Payment method\n• Headquarters postal code\n• Coverage effective date\n\nThe remaining 29 fields were extracted from the contract, intake form, and ABC Inc. folder.", "assistant");
+
+                    await streamMessage("You provided these 4 fields manually:\n• Billing contact email\n• Payment method\n• Headquarters postal code\n• Coverage effective date\n\nThe remaining 29 fields were extracted from the contract, intake form, and Northbridge folder.", "assistant");
                     return;
                 }
             }
-            
+
             if (OnboardingStep === 6) {
                 if (query.includes("submit") || query.includes("correct") || query.includes("everything looks")) {
                     setOnboardingStep(7);
                     setIsTyping(true);
                     await new Promise(r => setTimeout(r, 500));
                     setIsTyping(false);
-                    
+
                     await streamMessage("Before submitting, please confirm you’ve reviewed the customer profile, billing details, coverage date, and attached documents.", "assistant");
                     return;
                 }
             }
-            
+
             if (OnboardingStep === 7) {
                 if (query.includes("confirm") || query.includes("yes")) {
                     setOnboardingStep(0);
                     setIsTyping(true);
                     await new Promise(r => setTimeout(r, 500));
                     setIsTyping(false);
-                    
-                    await streamMessage("Submitting ABC Inc. onboarding request now.", "assistant");
-                    
+
+                    await streamMessage("Submitting Northbridge Manufacturing Ltd. onboarding request now.", "assistant");
+
                     setIsTyping(true);
                     await new Promise(r => setTimeout(r, 2000));
                     setIsTyping(false);
-                    
-                    await streamMessage("ABC Inc. has been submitted for onboarding.\n\nI also created an audit summary showing:\n• Which fields were extracted from documents\n• Which fields you provided manually\n• Which documents were used\n• Submission time and workflow status", "assistant");
+
+                    await streamMessage("Northbridge Manufacturing Ltd. has been submitted for onboarding.\n\nI also created an audit summary showing:\n• Which fields were extracted from documents\n• Which fields you provided manually\n• Which documents were used\n• Submission time and workflow status", "assistant");
                     return;
                 }
             }
@@ -1896,7 +1996,7 @@ export default function RightChatPanel() {
                             <div className="flex items-center gap-2">
                                 {isSidebarCollapsed ? (
                                     <div className="flex flex-col items-center gap-4 w-full">
-                                        <button 
+                                        <button
                                             onClick={() => setIsSidebarCollapsed(false)}
                                             className="p-2 text-slate-500 hover:text-white transition-colors"
                                             title="Expand Sidebar"
@@ -1921,7 +2021,7 @@ export default function RightChatPanel() {
                                             </span>
                                             <span className='text-[10px] text-slate-500 border border-slate-700 px-1.5 rounded'>⌘K</span>
                                         </button>
-                                        <button 
+                                        <button
                                             onClick={() => setIsSidebarCollapsed(true)}
                                             className="p-2 text-slate-500 hover:text-white transition-all hover:bg-slate-800 rounded-lg"
                                             title="Collapse Sidebar"
@@ -2151,7 +2251,27 @@ export default function RightChatPanel() {
                             </div>
                         ))}
 
-                        {isTyping && (
+                        {/* Assistant Status Indicator (Transient) */}
+                    {statusIndicator && (
+                        <div className="flex justify-start mb-4 animate-fade-in">
+                            <div className="flex gap-3 max-w-[85%] items-start">
+                                <div className="w-7 h-7 rounded-full bg-blue-100 flex-shrink-0 flex items-center justify-center shadow-sm">
+                                    <span className="text-[12px]">🤖</span>
+                                </div>
+                                <div className="flex items-center gap-3 py-2.5 px-4 bg-white border border-slate-100 rounded-2xl shadow-sm italic text-[#1e3a5f]/70">
+                                    <span className="text-[16px] leading-none">{statusIndicator.emoji || "⚙️"}</span>
+                                    <span className="text-[13px] font-medium tracking-tight">{statusIndicator.text}</span>
+                                    <div className="flex gap-1">
+                                        <div className="w-1 h-1 bg-blue-400 rounded-full animate-bounce" />
+                                        <div className="w-1 h-1 bg-blue-400 rounded-full animate-bounce [animation-delay:0.2s]" />
+                                        <div className="w-1 h-1 bg-blue-400 rounded-full animate-bounce [animation-delay:0.4s]" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {isTyping && (
                             <div className='flex flex-col gap-2 max-w-[85%] animate-fade-in'>
                                 <div className='bg-white p-4 rounded-2xl rounded-tl-none border border-gray-200 shadow-sm inline-flex items-center w-fit'>
                                     <div className='flex space-x-1.5 h-3 items-center'>
@@ -2224,20 +2344,20 @@ export default function RightChatPanel() {
 
             {/* Image Preview Modal */}
             {previewImage && typeof document !== "undefined" && createPortal(
-                <div 
+                <div
                     className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-slate-900/90 backdrop-blur-sm animate-fade-in"
                     onClick={() => setPreviewImage(null)}
                 >
-                    <button 
+                    <button
                         onClick={() => setPreviewImage(null)}
                         className="absolute top-6 right-6 p-3 bg-white/10 hover:bg-white/20 rounded-full text-white transition-all hover:rotate-90"
                     >
                         <X size={32} />
                     </button>
                     <div className="relative max-w-[90vw] max-h-[90vh] overflow-hidden rounded-2xl shadow-2xl animate-zoom-in" onClick={e => e.stopPropagation()}>
-                        <img 
-                            src={previewImage} 
-                            alt="Preview" 
+                        <img
+                            src={previewImage}
+                            alt="Preview"
                             className="w-full h-full object-contain"
                         />
                     </div>

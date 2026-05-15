@@ -307,7 +307,7 @@ export function TierTable({ engine }: { engine: ReturnType<typeof useCorporateEn
                     // Use standard timeout instead of cancellable delay to avoid WorkflowCancelled error
                     await new Promise(r => setTimeout(r, 1000));
 
-                    const msg = "The tier configuration for ABC Inc. is complete. Please review the summary and click the Next button to finalize the setup.";
+                    const msg = "The tier configuration is complete. Please review the summary and click the Next button to finalize the setup.";
                     openChat(msg, true);
                     await speakText(msg);
                 } catch (e: any) {

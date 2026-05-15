@@ -17,7 +17,7 @@ export default function MaxGreeting() {
         }
 
         const triggerSpeech = () => {
-            speakText("Hi, I’m Nina. Your Assistant. Ask me anything");
+            speakText("Hi, I’m Nina. Your Assistant. I can help you with anything");
             window.removeEventListener('click', triggerSpeech);
             window.removeEventListener('keydown', triggerSpeech);
         };
@@ -30,7 +30,7 @@ export default function MaxGreeting() {
 
                 // If the user has already interacted, speak immediately
                 if (navigator.userActivation?.isActive) {
-                    speakText("Hi, I’m Nina. Your Assistant. Ask me anything");
+                    speakText("Hi, I’m Nina. Your Assistant. I can help you with anything");
                 } else {
                     // Otherwise, wait for the first click or keypress
                     window.addEventListener('click', triggerSpeech);
@@ -101,7 +101,7 @@ export default function MaxGreeting() {
                     {/* Action Button */}
                     <button
                         onClick={() => {
-                            openChat("What would you like to do today? I can help you to onboard a new company, file a claim, or onboard a new policy provider.");
+                            openChat("What would you like to do today? I can help you to onboard a new company, file a claim, or onboard a new policy provider.\n\nYou can talk to or you can type text here.");
                             setIsVisible(false);
                         }}
                         className="group relative w-full overflow-hidden rounded-2xl bg-[#0a1e3b] px-6 py-4 transition-all duration-300 hover:bg-blue-900 hover:shadow-xl hover:shadow-blue-900/20 active:scale-[0.98] animate-Nina-pulse-gentle"

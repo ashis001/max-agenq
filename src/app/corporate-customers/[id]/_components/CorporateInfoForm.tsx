@@ -420,10 +420,10 @@ export function CorporateInfoForm({ engine }: { engine: ReturnType<typeof useCor
             setValue("broker", "Sarah Johnson-ADVISOR-1001");
             setValue("selectProfile", "Corporate Insurance");
             setValue("paymentPlatform", "AuthorizeNet");
-            setValue("name", "ABC Inc.");
+            setValue("name", "Northbridge Manufacturing Ltd.");
             setValue("provincialOffices", "Toronto");
             setValue("policyStartDate", "2026-07-01");
-            setValue("contactEmail", "finance@abcinc.ca");
+            setValue("contactEmail", "finance@northbridge.ca");
             setValue("address.street1", "123 Main St");
             setValue("address.city", "Toronto");
             setValue("address.province", "Ontario");
@@ -432,7 +432,7 @@ export function CorporateInfoForm({ engine }: { engine: ReturnType<typeof useCor
             setValue("contacts.0.firstName", "Sarah");
             setValue("contacts.0.lastName", "Thompson");
             setValue("contacts.0.phone", "555-123-4567");
-            setValue("contacts.0.email", "finance@abcinc.ca");
+            setValue("contacts.0.email", "finance@northbridge.ca");
             setValue("contacts.0.role", "HR Admin Access");
             setValue("waitingPeriodInitial", "yes");
             setValue("waitingPeriodNewHires", "30 Days");

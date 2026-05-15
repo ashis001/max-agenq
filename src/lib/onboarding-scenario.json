@@ -3,7 +3,7 @@
     "name": "Corporate Customer Onboarding",
     "software": "Max",
     "customer": {
-      "name": "ABC Inc.",
+      "name": "Northbridge Manufacturing Ltd.",
       "industry": "Manufacturing",
       "country": "Canada",
       "customerType": "Corporate group insurance",
@@ -11,18 +11,18 @@
       "primaryContact": "Sarah Thompson",
       "employeeCount": 184,
       "billingStructure": "Employer-sponsored group plan",
-      "billingContactEmail": "finance@abcinc.ca",
+      "billingContactEmail": "finance@northbridge.ca",
       "paymentMethod": "monthly invoice",
       "headquartersPostalCode": "M5V 2T6",
       "coverageEffectiveDate": "July 1, 2026"
     },
     "documents": [
-      "ABC Inc. signed contract",
-      "ABC Inc. customer intake form",
+      "Northbridge Manufacturing Ltd. signed contract",
+      "Northbridge Manufacturing Ltd. customer intake form",
       "eligibility file"
     ],
     "connectedSources": [
-      "OneDrive: ABC Inc. - Commercial Group Benefits"
+      "OneDrive: Northbridge Manufacturing Ltd. - Commercial Group Benefits"
     ],
     "metadata": {
       "totalRequiredFields": 33,
@@ -115,7 +115,7 @@
           },
           {
             "actor": "Broker",
-            "text": "Billing contact is finance@abcinc.ca. Payment method is monthly invoice. Postal code is M5V 2T6. Coverage starts July 1, 2026."
+            "text": "Billing contact is finance@northbridge.ca. Payment method is monthly invoice. Postal code is M5V 2T6. Coverage starts July 1, 2026."
           },
           {
             "actor": "NINA",

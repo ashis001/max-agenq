@@ -306,10 +306,7 @@ export function TierEditorPanel({
                         setIsWorkflowActive(true);
                         isWorkflowActiveRef.current = true;
 
-                        const msg = "Now I am filling the Tier Config form.";
-                        openChat(msg, true);
-                        await speakText(msg);
-                        await new Promise(r => setTimeout(r, 2000));
+                        // Filling...
 
                         // Instant Fill
                         setValue("name", "Standard Coverage Tier");
@@ -359,10 +356,10 @@ export function TierEditorPanel({
                         }
 
                         await new Promise(r => setTimeout(r, 1000));
-                        const reviewMsg = "I have filled the Tier Config details. Please review before submit.";
+                        const reviewMsg = "I have filled the Tier Config details for Northbridge Manufacturing Ltd. Please review before submitting.";
                         openChat(reviewMsg, true);
                         await speakText(reviewMsg);
-                        
+
                         setIsWorkflowActive(false);
                     } catch (e) {
                         console.error("Real fill error:", e);

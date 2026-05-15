@@ -198,7 +198,7 @@ export function SetupStatus({ engine }: { engine: ReturnType<typeof useCorporate
                     if (modalState === 'NONE' && !hasStartedRef.current) {
                         hasStartedRef.current = true;
                         await new Promise(r => setTimeout(r, 1000));
-                        const msg = "Your setup is almost complete. Please click the Next button to finalize the subdomain and admin settings for ABC Inc.";
+                        const msg = "Your setup is almost complete. Please click the Next button to finalize the subdomain and admin settings.";
                         openChat(msg, true);
                         await speakText(msg);
                     } else if (modalState === 'SELECT_SUBDOMAIN') {
