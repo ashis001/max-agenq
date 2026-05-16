@@ -126,9 +126,8 @@ export default function RightChatPanel() {
                             <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Payment Method</label>
                             <select id="chat-payment-method" className="w-full mt-1 p-2 bg-slate-50 border border-slate-200 rounded-lg text-[13px] text-slate-700 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all">
                                 <option value="">Select payment method</option>
-                                <option value="monthly invoice">Monthly Invoice</option>
-                                <option value="credit card">Credit Card</option>
-                                <option value="bank transfer">Bank Transfer</option>
+                                <option value="Credit Card">Credit Card</option>
+                                <option value="Pre Authorized Debit">Pre-Authorized Debit</option>
                             </select>
                         </div>
                         <div>
@@ -1592,7 +1591,7 @@ export default function RightChatPanel() {
             if (query.includes("sold a new group insurance deal") || query.includes("northbridge") || (query.includes("set up") && query.includes("customer onboarding")) || query.includes("onboarding_query") || query.includes("onboarding") || query.includes("onboard")) {
                 if (isInterruptedRef.current) return;
                 setIsTyping(false);
-                const combinedIntro = "Got it. We can do these 2 ways.\n\n**Training Mode**: I walk you through each step, by using sample data.\n\n**Execution Mode**: I complete the setup with actual data on behalf of you, and then you just need to review it before submission.";
+                const combinedIntro = "Got it. We can do these 2 ways.\n\n**Training Mode**: I walk you through each step, by using sample data.\n\n**Execution Mode**: I will complete the setup with actual data on your behalf, and then you just need to review it before submission.";
                 await streamMessage(combinedIntro, "assistant");
 
                 setIsTyping(true);
@@ -1602,7 +1601,7 @@ export default function RightChatPanel() {
                 const followUpText = "What would you like?";
                 setPendingContext("onboarding_sample_prompt"); // Set the context for the next turn
                 await streamMessage(followUpText, "assistant", [
-                    { label: "Training Mode (Sample)", value: "sample" },
+                    { label: "Training Mode (Sample Data)", value: "sample" },
                     { label: "Execution Mode (Real Data)", value: "real" },
                 ]);
                 return;
@@ -1687,9 +1686,20 @@ export default function RightChatPanel() {
                     await new Promise(r => setTimeout(r, 1500));
                     setIsTyping(false);
 
-                    // Dispatch the event to fill the UI on page 1
+                    // Dispatch the event to fill the UI on page 1 with real values from the chat
+                    const emailMatch = query.match(/Billing contact is (.*?)\./);
+                    const methodMatch = query.match(/Payment method is (.*?)\./);
+                    const postalMatch = query.match(/Postal code is (.*?)\./);
+                    const dateMatch = query.match(/Coverage starts (.*?)\./);
+
                     window.dispatchEvent(new CustomEvent('fill-onboarding-form', {
-                        detail: { fileName: 'contract and intake form' }
+                        detail: { 
+                            fileName: 'contract and intake form',
+                            email: emailMatch ? emailMatch[1] : null,
+                            paymentMethod: methodMatch ? methodMatch[1] : null,
+                            postalCode: postalMatch ? postalMatch[1] : null,
+                            policyStartDate: dateMatch ? dateMatch[1] : null
+                        }
                     }));
 
                     await streamMessage("I filled the onboarding form using the uploaded documents and authorized Northbridge folder.\n\nPlease review the highlighted fields before submitting.", "assistant");
@@ -2129,8 +2139,9 @@ export default function RightChatPanel() {
                                                         setPendingContext(null);
 
                                                         if (action.value === "real") {
-                                                            handleSend("Use Real Customer");
+                                                            handleSend("Execution Mode (Real Data)");
                                                         } else if (action.value === "sample") {
+                                                            handleSend("Training Mode (Sample Data)");
                                                             // Interactive Guide Logic
                                                             const navItem = document.getElementById("nav-item-corporate-customers");
                                                             if (navItem) {

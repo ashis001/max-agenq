@@ -417,27 +417,34 @@ export function CorporateInfoForm({ engine }: { engine: ReturnType<typeof useCor
 
     useEffect(() => {
         const handleFillForm = (e: any) => {
+            const data = e.detail || {};
+            
             setValue("broker", "Sarah Johnson-ADVISOR-1001");
             setValue("selectProfile", "Corporate Insurance");
             setValue("paymentPlatform", "AuthorizeNet");
             setValue("name", "Northbridge Manufacturing Ltd.");
             setValue("provincialOffices", "Toronto");
-            setValue("policyStartDate", "2026-07-01");
-            setValue("contactEmail", "finance@northbridge.ca");
+            
+            // Use values from chat if provided, otherwise use defaults
+            setValue("policyStartDate", data.policyStartDate || "2026-07-01");
+            setValue("contactEmail", data.email || "finance@northbridge.ca");
+            
             setValue("address.street1", "123 Main St");
             setValue("address.city", "Toronto");
             setValue("address.province", "Ontario");
             setValue("address.country", "Canada");
-            setValue("address.postalCode", "M5V 2T6");
+            setValue("address.postalCode", data.postalCode || "M5V 2T6");
+            
             setValue("contacts.0.firstName", "Sarah");
             setValue("contacts.0.lastName", "Thompson");
             setValue("contacts.0.phone", "555-123-4567");
-            setValue("contacts.0.email", "finance@northbridge.ca");
+            setValue("contacts.0.email", data.email || "finance@northbridge.ca");
             setValue("contacts.0.role", "HR Admin Access");
+            
             setValue("waitingPeriodInitial", "yes");
             setValue("waitingPeriodNewHires", "30 Days");
             setValue("defineCoverageTiers", "yes");
-            setValue("paymentMethod", "monthly invoice");
+            setValue("paymentMethod", data.paymentMethod || "Credit Card");
             setValue("showEmployerName", "yes");
             setValue("employeeCount", 184);
 
