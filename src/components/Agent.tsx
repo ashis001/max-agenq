@@ -76,7 +76,7 @@ export default function Agent() {
 
       <div id='agenq-root' ref={slotRef} />
       <Script
-        src={"https://cdn.agenqglobal.com/agenq-client-sdk.js"}
+        // src={"https://cdn.agenqglobal.com/agenq-client-sdk.js"}
         strategy='afterInteractive'
         onError={() => {
           console.error("❌ Failed to load AgenQ SDK (SSL or Network error)");

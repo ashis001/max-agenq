@@ -13,7 +13,6 @@ import {
     VolumeX,
     Pause,
     Play,
-    Minimize2,
     Maximize2,
     MousePointer2,
     Paperclip,
@@ -55,6 +54,7 @@ interface Message {
     text: string;
     sender: "user" | "assistant";
     timestamp: string;
+    inputType?: "voice" | "text";
     actions?: { label: string; value: string }[];
 }
 
@@ -86,7 +86,7 @@ export default function RightChatPanel() {
                                 <p className="text-[10px] text-slate-500 font-medium">Allow NINA to access customer-related folders and communications.</p>
                             </div>
                         </div>
-                        <button 
+                        <button
                             onClick={() => handleSend("Authorize access")}
                             className="w-full py-2.5 bg-[#1e3a5f] text-white rounded-lg font-bold text-[13px] hover:bg-blue-700 transition-all shadow-sm flex justify-center items-center gap-2"
                         >
@@ -306,6 +306,7 @@ export default function RightChatPanel() {
     const [OnboardingStep, setOnboardingStep] = useState<number>(0); // NEW: Track Onboarding Storyboard progress
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(true); // Toggle for sidebar expansion, default to collapsed
     const [previewImage, setPreviewImage] = useState<string | null>(null); // State for image zoom/modal
+    const [inputMode, setInputMode] = useState<"voice" | "text" | null>(null);
 
     // Dragging State
     const [position, setPosition] = useState({ x: 0, y: 0 }); // Controlled by layout effect
@@ -336,6 +337,7 @@ export default function RightChatPanel() {
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const isInterruptedRef = useRef(false);
     const activeMessageTextRef = useRef<string | null>(null);
+    const lastInputTypeRef = useRef<"voice" | "text">("voice");
     const [messageRatings, setMessageRatings] = useState<Record<string, 'like' | 'dislike'>>({});
 
     const toggleRating = (id: string, rating: 'like' | 'dislike') => {
@@ -410,7 +412,7 @@ export default function RightChatPanel() {
                     if (currentFullTranscript.trim()) {
                         silenceTimerRef.current = setTimeout(() => {
                             if (transcriptRef.current.trim()) {
-                                handleSend(transcriptRef.current);
+                                handleSend(transcriptRef.current, "voice");
                                 transcriptRef.current = "";
                                 recognitionRef.current?.stop();
                             }
@@ -427,7 +429,7 @@ export default function RightChatPanel() {
                         clearTimeout(silenceTimerRef.current);
                         silenceTimerRef.current = null;
                         if (transcriptRef.current.trim()) {
-                            handleSend(transcriptRef.current);
+                            handleSend(transcriptRef.current, "voice");
                             transcriptRef.current = "";
                         }
                     }
@@ -590,7 +592,7 @@ export default function RightChatPanel() {
         const words = text.split(" ");
         let currentText = "";
         activeMessageTextRef.current = text;
-        const speechPromise = speakWithIndicator(text);
+        const speechPromise = lastInputTypeRef.current === "voice" ? speakWithIndicator(text) : Promise.resolve();
 
         for (let i = 0; i < words.length; i++) {
             if (isInterruptedRef.current) return;
@@ -648,7 +650,8 @@ export default function RightChatPanel() {
 
     const triggerGreeting = async () => {
         isInterruptedRef.current = false;
-        
+        lastInputTypeRef.current = "voice";
+
         // Clear any existing pending greeting
         if (greetingTimeoutRef.current) {
             clearTimeout(greetingTimeoutRef.current);
@@ -666,13 +669,14 @@ export default function RightChatPanel() {
 
     useEffect(() => {
         if (isOpen) {
+            setInputMode(null);
             // CASE A: Opened via Top Bar (or any direct external trigger)
             if (externalMessage) {
                 isInterruptedRef.current = false;
                 hasTriggeredGreetingRef.current = true; // Mark as triggered so Case B doesn't fire later
-                
+
                 const secondMsg = "What would you like to do today? I can help you to onboard a new company, file a claim, or onboard a new policy provider.\n\nYou can talk to or you can type text here.";
-                
+
                 const timer = setTimeout(async () => {
                     const isStandardGreeting = externalMessage.toLowerCase().includes("hi, i’m Nina") ||
                         externalMessage.toLowerCase().includes("hi, i'm Nina") ||
@@ -718,11 +722,15 @@ export default function RightChatPanel() {
                             await new Promise(resolve => setTimeout(resolve, 80));
                         }
                     } else {
+                        lastInputTypeRef.current = "voice";
                         await streamMessage(actualMessage, "assistant");
                     }
 
                     if (isStandardGreeting) {
-                        if (!isInterruptedRef.current) await streamMessage(secondMsg, "assistant");
+                        if (!isInterruptedRef.current) {
+                            lastInputTypeRef.current = "voice";
+                            await streamMessage(secondMsg, "assistant");
+                        }
                     } else if (isIntroQuestion) {
                         // The intro question itself is the greeting, so we don't need to stream secondMsg again.
                     }
@@ -789,6 +797,7 @@ export default function RightChatPanel() {
         setPendingContext(null);
         setInputValue("");
         setIsTyping(false);
+        setInputMode(null);
 
         // Trigger the vocal greeting sequence
         hasTriggeredGreetingRef.current = true; // Mark as triggered so the effect doesn't double-fire
@@ -941,20 +950,20 @@ export default function RightChatPanel() {
             setTimeout(async () => {
                 setIsTyping(false);
                 await streamMessage(`Got it. Started onboarding.`, "assistant");
-                
+
                 setIsTyping(true);
                 await new Promise(r => setTimeout(r, 800));
                 setIsTyping(false);
-                
+
                 setStatusIndicator({ text: "Reading proposal", emoji: "📄" });
                 await new Promise(r => setTimeout(r, 1500));
-                
+
                 setStatusIndicator({ text: "Reading onboarding form", emoji: "📄" });
                 await new Promise(r => setTimeout(r, 1500));
-                
+
                 setStatusIndicator({ text: "Searching OneDrive for Northbridge Manufacturing Ltd.", emoji: "🔍" });
                 await new Promise(r => setTimeout(r, 2500));
-                
+
                 setStatusIndicator(null); // Hide before next message
                 await streamMessage("I found additional data in OneDrive and recent emails. I need your permission to access it.\n\n[AUTHORIZE_BUTTON]", "assistant");
             }, 1000);
@@ -979,7 +988,7 @@ export default function RightChatPanel() {
         if (fileInputRef.current) fileInputRef.current.value = "";
     };
 
-    const handleSend = async (overrideValue?: string) => {
+    const handleSend = async (overrideValue?: string, inputType?: "voice" | "text") => {
         // Stop current listening for processing
         if (silenceTimerRef.current) {
             clearTimeout(silenceTimerRef.current);
@@ -1007,11 +1016,13 @@ export default function RightChatPanel() {
                 hour: "2-digit",
                 minute: "2-digit",
             }),
+            inputType: inputType || "text",
         };
 
         setMessages((prev) => [...prev, userMsg]);
         setInputValue("");
         setIsTyping(true);
+        lastInputTypeRef.current = inputType || "text";
 
         // Simulate AI Thinking & Data Fetching
         setTimeout(async () => {
@@ -1275,11 +1286,11 @@ export default function RightChatPanel() {
                         setNinaStep(0);
                         setPurchaseStep(0);
                         localStorage.setItem("onboarding_type", "real");
-                        
+
                         setIsTyping(false);
                         const executionStartMsg = "Perfect. I’ll take care of the onboarding.\n\nThis setup involves 33 data points across customer profile, policy details, billing, eligibility, contacts, and documents. I’ll handle most of it for you.\n\nTo begin, share the company name and any documents or source: OneDrive, email, or upload.";
                         await streamMessage(executionStartMsg, "assistant");
-                        
+
                         // Automatically navigate to corporate customers page so the upload listener works
                         if (!window.location.pathname.includes('/corporate-customers')) {
                             router.push("/corporate-customers");
@@ -1611,29 +1622,29 @@ export default function RightChatPanel() {
                 if (query.toLowerCase().includes("authorize") || query.includes("yes") || query.includes("use it")) {
                     setOnboardingStep(3);
                     setIsTyping(false);
-                    
+
                     setStatusIndicator({ text: "Access granted", emoji: "🔓" });
                     await new Promise(r => setTimeout(r, 1200));
-                    
+
                     setStatusIndicator({ text: "Opening customer folder", emoji: "📁" });
                     await new Promise(r => setTimeout(r, 1200));
-                    
+
                     setStatusIndicator({ text: "Scanning recent emails", emoji: "📧" });
                     await new Promise(r => setTimeout(r, 1500));
-                    
+
                     setStatusIndicator({ text: "Matching data to onboarding fields", emoji: "📄" });
                     await new Promise(r => setTimeout(r, 2000));
-                    
+
                     setStatusIndicator(null);
 
                     await streamMessage("Onboarding setup is ready for review.", "assistant");
-                    
+
                     setIsTyping(true);
                     await new Promise(r => setTimeout(r, 1000));
                     setIsTyping(false);
 
                     await streamMessage("Here is the Onboarding Summary for **Northbridge Manufacturing Ltd.** below:", "assistant");
-                    
+
                     const summaryTable = `| Section | Field | Status |
 | :--- | :--- | :--- |
 | Customer Profile | Legal Name | ✅ Completed |
@@ -1656,13 +1667,13 @@ export default function RightChatPanel() {
 | Documents | Signed Proposal | ✅ Completed |
 | Documents | Onboarding Form | ✅ Completed |
 | Documents | Enrollment File | ⚠️ Pending |`;
-                    
+
                     await streamMessage(summaryTable, "assistant", undefined, true); // Added skipStream parameter
 
                     setIsTyping(true);
                     await new Promise(r => setTimeout(r, 1500));
                     setIsTyping(false);
-                    
+
                     await streamMessage("I’ve completed 29 of 33 data points. I just need a few details to finish: **billing contact email**, **payment method**, **headquarters postal code**, and **coverage effective date**.[MISSING_DETAILS_FORM]", "assistant");
                     return;
                 }
@@ -1693,7 +1704,7 @@ export default function RightChatPanel() {
                     const dateMatch = query.match(/Coverage starts (.*?)\./);
 
                     window.dispatchEvent(new CustomEvent('fill-onboarding-form', {
-                        detail: { 
+                        detail: {
                             fileName: 'contract and intake form',
                             email: emailMatch ? emailMatch[1] : null,
                             paymentMethod: methodMatch ? methodMatch[1] : null,
@@ -1970,17 +1981,17 @@ export default function RightChatPanel() {
                         {isMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
                     </button>
                     <button
-                        onClick={() => {
-                            if (isFloating) setIsFloating(false);
-                            setIsExpanded(!isExpanded);
-                        }}
+                        type='button'
+                        onClick={toggleListening}
                         className={clsx(
-                            'p-2 rounded-full transition-all text-gray-400 hover:text-[#1e3a5f] hover:bg-gray-100',
-                            isExpanded && 'bg-blue-50 text-blue-600'
+                            'p-2 rounded-full transition-all',
+                            isVoiceMode
+                                ? 'bg-red-50 text-red-500 hover:bg-red-100 shadow-[0_0_15px_rgba(239,68,68,0.3)] animate-pulse hover:animate-none'
+                                : 'text-gray-400 hover:text-[#1e3a5f] hover:bg-gray-100'
                         )}
-                        title={isExpanded ? "Exit Full Screen" : "Full Screen Mode (History)"}
+                        title={isVoiceMode ? "Stop voice mode" : "Start voice mode"}
                     >
-                        {isExpanded ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
+                        {isVoiceMode ? <X size={18} /> : <Mic size={18} />}
                     </button>
                     <button
                         onClick={() => {
@@ -2263,26 +2274,26 @@ export default function RightChatPanel() {
                         ))}
 
                         {/* Assistant Status Indicator (Transient) */}
-                    {statusIndicator && (
-                        <div className="flex justify-start mb-4 animate-fade-in">
-                            <div className="flex gap-3 max-w-[85%] items-start">
-                                <div className="w-7 h-7 rounded-full bg-blue-100 flex-shrink-0 flex items-center justify-center shadow-sm">
-                                    <span className="text-[12px]">🤖</span>
-                                </div>
-                                <div className="flex items-center gap-3 py-2.5 px-4 bg-white border border-slate-100 rounded-2xl shadow-sm italic text-[#1e3a5f]/70">
-                                    <span className="text-[16px] leading-none">{statusIndicator.emoji || "⚙️"}</span>
-                                    <span className="text-[13px] font-medium tracking-tight">{statusIndicator.text}</span>
-                                    <div className="flex gap-1">
-                                        <div className="w-1 h-1 bg-blue-400 rounded-full animate-bounce" />
-                                        <div className="w-1 h-1 bg-blue-400 rounded-full animate-bounce [animation-delay:0.2s]" />
-                                        <div className="w-1 h-1 bg-blue-400 rounded-full animate-bounce [animation-delay:0.4s]" />
+                        {statusIndicator && (
+                            <div className="flex justify-start mb-4 animate-fade-in">
+                                <div className="flex gap-3 max-w-[85%] items-start">
+                                    <div className="w-7 h-7 rounded-full bg-blue-100 flex-shrink-0 flex items-center justify-center shadow-sm">
+                                        <span className="text-[12px]">🤖</span>
+                                    </div>
+                                    <div className="flex items-center gap-3 py-2.5 px-4 bg-white border border-slate-100 rounded-2xl shadow-sm italic text-[#1e3a5f]/70">
+                                        <span className="text-[16px] leading-none">{statusIndicator.emoji || "⚙️"}</span>
+                                        <span className="text-[13px] font-medium tracking-tight">{statusIndicator.text}</span>
+                                        <div className="flex gap-1">
+                                            <div className="w-1 h-1 bg-blue-400 rounded-full animate-bounce" />
+                                            <div className="w-1 h-1 bg-blue-400 rounded-full animate-bounce [animation-delay:0.2s]" />
+                                            <div className="w-1 h-1 bg-blue-400 rounded-full animate-bounce [animation-delay:0.4s]" />
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                    )}
+                        )}
 
-                    {isTyping && (
+                        {isTyping && (
                             <div className='flex flex-col gap-2 max-w-[85%] animate-fade-in'>
                                 <div className='bg-white p-4 rounded-2xl rounded-tl-none border border-gray-200 shadow-sm inline-flex items-center w-fit'>
                                     <div className='flex space-x-1.5 h-3 items-center'>
@@ -2298,59 +2309,68 @@ export default function RightChatPanel() {
 
                     {/* Input Section */}
                     <div className='p-4 bg-white/80 backdrop-blur-md border-t border-slate-200/60'>
-                        <form
-                            onSubmit={(e) => {
-                                e.preventDefault();
-                                handleSend();
-                            }}
-                            className='flex items-center gap-2 bg-white rounded-2xl border-2 border-slate-300 p-1.5 focus-within:border-[#1e3a5f] focus-within:ring-2 focus-within:ring-[#1e3a5f]/20 transition-all shadow-sm'>
-                            <button
-                                type='button'
-                                onClick={toggleListening}
-                                className={clsx(
-                                    "transition-all p-2.5 rounded-xl shadow-sm border",
-                                    isVoiceMode
-                                        ? "bg-red-50 border-red-200 text-red-500 hover:bg-red-100 hover:text-red-600 hover:border-red-300 shadow-[0_0_15px_rgba(239,68,68,0.3)] animate-pulse hover:animate-none"
-                                        : "bg-transparent border-transparent text-gray-500 hover:text-[#1e3a5f] hover:bg-gray-50 hover:border-gray-200"
-                                )}
-                                title={isVoiceMode ? "Stop voice mode" : "Start voice mode"}>
-                                {isVoiceMode ? <X size={20} /> : <Mic size={20} />}
-                            </button>
-                            <input
-                                type='text'
-                                placeholder={isListening ? "Listening..." : "Ask Nina something..."}
+                        {inputMode === null ? (
+                            <div className='flex items-center gap-3'>
+                                <button
+                                    type='button'
+                                    onClick={() => {
+                                        setInputMode("voice");
+                                        setTimeout(() => toggleListening(), 100);
+                                    }}
+                                    className='flex-1 flex items-center justify-center gap-2 py-2.5 rounded-2xl bg-gradient-to-b from-[#1e3a5f]/80 to-[#1e3a5f]/60 backdrop-blur-2xl text-white font-semibold text-sm border-t border-white/25 border-r border-white/10 border-b border-white/5 border-l border-white/10 shadow-2xl shadow-black/20 hover:from-[#1e3a5f]/85 hover:to-[#1e3a5f]/70 transition-all duration-300 active:scale-[0.98] animate-fade-in'>
+                                    <Mic size={16} />
+                                    Speak
+                                </button>
+                                <button
+                                    type='button'
+                                    onClick={() => setInputMode("text")}
+                                    className='flex-1 flex items-center justify-center gap-2 py-2.5 rounded-2xl bg-gradient-to-b from-white/80 to-white/60 backdrop-blur-2xl text-[#1e3a5f] font-semibold text-sm border-t border-white/90 border-r border-white/50 border-b border-white/30 border-l border-white/50 shadow-2xl shadow-black/10 hover:from-white/90 hover:to-white/70 transition-all duration-300 active:scale-[0.98] animate-fade-in'>
+                                    Text
+                                </button>
+                            </div>
+                        ) : (
+                            <form
+                                onSubmit={(e) => {
+                                    e.preventDefault();
+                                    handleSend();
+                                }}
+                                className='flex items-center gap-2 bg-white rounded-2xl border-2 border-slate-300 p-1.5 focus-within:border-[#1e3a5f] focus-within:ring-2 focus-within:ring-[#1e3a5f]/20 transition-all shadow-sm'>
+                                <input
+                                    type='text'
+                                    placeholder={isListening ? "Listening..." : "Ask Nina something..."}
 
-                                value={inputValue}
-                                onChange={(e) => setInputValue(e.target.value)}
-                                className='flex-1 min-w-0 bg-transparent text-gray-900 text-[13px] outline-none py-2 px-1 placeholder:text-gray-400 font-medium'
-                            />
-                            <input
-                                type='file'
-                                ref={fileInputRef}
-                                onChange={handleFileUpload}
-                                className="hidden"
-                                accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
-                            />
-                            <button
-                                type='button'
-                                onClick={() => fileInputRef.current?.click()}
-                                className="p-2.5 rounded-xl transition-all text-gray-500 hover:text-[#1e3a5f] hover:bg-gray-50 hover:border-gray-200"
-                                title="Upload bill or document"
-                            >
-                                <Paperclip size={20} />
-                            </button>
-                            <button
-                                type='submit'
-                                disabled={!inputValue.trim() || isTyping}
-                                className={clsx(
-                                    "p-2.5 rounded-xl transition-all shadow-md",
-                                    inputValue.trim() && !isTyping
-                                        ? "bg-[#1e3a5f] text-white hover:bg-[#162a45] hover:scale-105 active:scale-100"
-                                        : "bg-gray-100 text-gray-300 shadow-none cursor-not-allowed",
-                                )}>
-                                <Send size={18} />
-                            </button>
-                        </form>
+                                    value={inputValue}
+                                    onChange={(e) => setInputValue(e.target.value)}
+                                    className='flex-1 min-w-0 bg-transparent text-gray-900 text-[13px] outline-none py-2 px-1 placeholder:text-gray-400 font-medium'
+                                />
+                                <input
+                                    type='file'
+                                    ref={fileInputRef}
+                                    onChange={handleFileUpload}
+                                    className="hidden"
+                                    accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
+                                />
+                                <button
+                                    type='button'
+                                    onClick={() => fileInputRef.current?.click()}
+                                    className="p-2.5 rounded-xl transition-all text-gray-500 hover:text-[#1e3a5f] hover:bg-gray-50 hover:border-gray-200"
+                                    title="Upload bill or document"
+                                >
+                                    <Paperclip size={20} />
+                                </button>
+                                <button
+                                    type='submit'
+                                    disabled={!inputValue.trim() || isTyping}
+                                    className={clsx(
+                                        "p-2.5 rounded-xl transition-all shadow-md",
+                                        inputValue.trim() && !isTyping
+                                            ? "bg-[#1e3a5f] text-white hover:bg-[#162a45] hover:scale-105 active:scale-100"
+                                            : "bg-gray-100 text-gray-300 shadow-none cursor-not-allowed",
+                                    )}>
+                                    <Send size={18} />
+                                </button>
+                            </form>
+                        )}
                     </div></div></div>
 
             {/* Image Preview Modal */}
