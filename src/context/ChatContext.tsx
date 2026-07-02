@@ -60,10 +60,6 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
             const next = !prev;
             if (!next) {
                 stopSpeech();
-            } else {
-                // If we are opening, ensure it is unmuted
-                setIsMutedState(false);
-                setGlobalMuteState(false);
             }
             return next;
         });
@@ -71,8 +67,6 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
     const openChat = useCallback((message?: string, silent: boolean = false) => {
         if (!silent) stopSpeech();
-        setIsMutedState(false);
-        setGlobalMuteState(false);
         if (message) setExternalMessage(silent ? `SILENT:${message}` : message);
         setIsOpen(true);
     }, []);

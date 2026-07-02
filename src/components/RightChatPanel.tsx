@@ -4,6 +4,8 @@ import React, { useState, useCallback, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import {
     X,
+    MoreVertical,
+    Trash2,
     Send,
     MessageSquare,
 
@@ -23,7 +25,9 @@ import {
     ThumbsUp,
     ThumbsDown,
     ChevronLeft,
-    ChevronRight
+    ChevronRight,
+    Phone,
+    Sparkles
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useChat } from "@/context/ChatContext";
@@ -55,6 +59,7 @@ interface Message {
     sender: "user" | "assistant";
     timestamp: string;
     inputType?: "voice" | "text";
+    wasSpoken?: boolean;
     actions?: { label: string; value: string }[];
 }
 
@@ -306,7 +311,7 @@ export default function RightChatPanel() {
     const [OnboardingStep, setOnboardingStep] = useState<number>(0); // NEW: Track Onboarding Storyboard progress
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(true); // Toggle for sidebar expansion, default to collapsed
     const [previewImage, setPreviewImage] = useState<string | null>(null); // State for image zoom/modal
-    const [inputMode, setInputMode] = useState<"voice" | "text" | null>(null);
+    const [inputMode, setInputMode] = useState<"voice" | "text" | null>("text");
 
     // Dragging State
     const [position, setPosition] = useState({ x: 0, y: 0 }); // Controlled by layout effect
@@ -338,6 +343,7 @@ export default function RightChatPanel() {
     const isInterruptedRef = useRef(false);
     const activeMessageTextRef = useRef<string | null>(null);
     const lastInputTypeRef = useRef<"voice" | "text">("voice");
+    const isMutedRef = useRef(isMuted);
     const [messageRatings, setMessageRatings] = useState<Record<string, 'like' | 'dislike'>>({});
 
     const toggleRating = (id: string, rating: 'like' | 'dislike') => {
@@ -353,7 +359,28 @@ export default function RightChatPanel() {
     const [guideTargetRect, setGuideTargetRect] = useState<{ top: number, left: number, width: number, height: number } | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
+    const [isHeaderMenuOpen, setIsHeaderMenuOpen] = useState(false);
+    const headerMenuRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (headerMenuRef.current && !headerMenuRef.current.contains(event.target as Node)) {
+                setIsHeaderMenuOpen(false);
+            }
+        };
+        if (isHeaderMenuOpen) {
+            document.addEventListener("mousedown", handleClickOutside);
+        }
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+        };
+    }, [isHeaderMenuOpen]);
+
     // Sync refs for async callbacks
+    useEffect(() => {
+        isMutedRef.current = isMuted;
+    }, [isMuted]);
+
     useEffect(() => {
         isSpeakingRef.current = isSpeaking;
     }, [isSpeaking]);
@@ -389,7 +416,20 @@ export default function RightChatPanel() {
                 recognitionRef.current.continuous = true;
                 recognitionRef.current.interimResults = true;
 
+                const handleSpeechInterrupt = () => {
+                    if (isSpeakingRef.current) {
+                        stopSpeech();
+                        setIsSpeaking(false);
+                        isSpeakingRef.current = false;
+                        isInterruptedRef.current = true;
+                    }
+                };
+
+                recognitionRef.current.onspeechstart = handleSpeechInterrupt;
+                recognitionRef.current.onsoundstart = handleSpeechInterrupt;
+
                 recognitionRef.current.onresult = (event: any) => {
+                    handleSpeechInterrupt();
                     let fullTranscript = "";
                     for (let i = event.resultIndex; i < event.results.length; i++) {
                         fullTranscript += event.results[i][0].transcript;
@@ -493,6 +533,9 @@ export default function RightChatPanel() {
             const hasPermission = await checkMicrophonePermission();
             if (!hasPermission) return;
 
+            // Automatically unmute the speaker when entering voice mode
+            setIsMuted(false);
+
             try {
                 // Ensure we're not already running by stopping first
                 try {
@@ -534,8 +577,8 @@ export default function RightChatPanel() {
 
     const speakWithIndicator = async (text: string) => {
         try {
-            // Stop listening before speaking to prevent state conflicts
-            if (isListeningRef.current) {
+            // Stop listening before speaking to prevent state conflicts ONLY if not in voice mode
+            if (isListeningRef.current && !isVoiceModeRef.current) {
                 recognitionRef.current?.stop();
                 setIsListening(false);
                 isListeningRef.current = false;
@@ -575,8 +618,10 @@ export default function RightChatPanel() {
         const id = Date.now().toString();
         const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
+        const shouldBeSpoken = sender === "assistant" && !isMutedRef.current;
+
         if (skipStream) {
-            setMessages(prev => [...prev, { id, text, sender, timestamp, actions }]);
+            setMessages(prev => [...prev, { id, text, sender, timestamp, actions, wasSpoken: shouldBeSpoken }]);
             return;
         }
 
@@ -584,7 +629,8 @@ export default function RightChatPanel() {
             id,
             text: "",
             sender,
-            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            wasSpoken: shouldBeSpoken
         };
 
         setMessages(prev => [...prev, baseMsg]);
@@ -592,7 +638,7 @@ export default function RightChatPanel() {
         const words = text.split(" ");
         let currentText = "";
         activeMessageTextRef.current = text;
-        const speechPromise = lastInputTypeRef.current === "voice" ? speakWithIndicator(text) : Promise.resolve();
+        const speechPromise = shouldBeSpoken ? speakWithIndicator(text) : Promise.resolve();
 
         for (let i = 0; i < words.length; i++) {
             if (isInterruptedRef.current) return;
@@ -662,6 +708,8 @@ export default function RightChatPanel() {
         greetingTimeoutRef.current = setTimeout(async () => {
             if (!isInterruptedRef.current) {
                 await streamMessage(secondMsg, "assistant");
+                // Automatically turn speaker OFF after default greeting message finishes speaking
+                setIsMuted(true);
             }
             greetingTimeoutRef.current = null;
         }, 1000);
@@ -669,7 +717,7 @@ export default function RightChatPanel() {
 
     useEffect(() => {
         if (isOpen) {
-            setInputMode(null);
+            setInputMode("text");
             // CASE A: Opened via Top Bar (or any direct external trigger)
             if (externalMessage) {
                 isInterruptedRef.current = false;
@@ -735,6 +783,9 @@ export default function RightChatPanel() {
                         // The intro question itself is the greeting, so we don't need to stream secondMsg again.
                     }
 
+                    // Automatically turn speaker OFF after load-time greeting/message finishes speaking
+                    setIsMuted(true);
+
                     clearExternalMessage();
                 }, 500);
                 return () => clearTimeout(timer);
@@ -797,7 +848,7 @@ export default function RightChatPanel() {
         setPendingContext(null);
         setInputValue("");
         setIsTyping(false);
-        setInputMode(null);
+        setInputMode("text");
 
         // Trigger the vocal greeting sequence
         hasTriggeredGreetingRef.current = true; // Mark as triggered so the effect doesn't double-fire
@@ -1926,30 +1977,6 @@ export default function RightChatPanel() {
                         <h3 className='text-[#1e3a5f] font-bold text-sm tracking-tight'>
                             Nina
                         </h3>
-
-                        {(isSpeaking || isListening) && (
-                            <p className='text-gray-500 text-[10px] flex items-center gap-2 font-semibold'>
-                                <span className='relative flex h-2 w-2'>
-                                    {isSpeaking && (
-                                        <>
-                                            <span className='absolute inset-[-2px] inline-flex h-full w-full rounded-full bg-green-400 animate-ping opacity-75' />
-                                            <span className='absolute inset-[-4px] inline-flex h-full w-full rounded-full bg-green-300 animate-pulse opacity-40' />
-                                        </>
-                                    )}
-                                    {isListening && (
-                                        <>
-                                            <span className='absolute inset-[-2px] inline-flex h-full w-full rounded-full bg-yellow-400 animate-ping opacity-75' />
-                                            <span className='absolute inset-[-4px] inline-flex h-full w-full rounded-full bg-yellow-300 animate-pulse opacity-40' />
-                                        </>
-                                    )}
-                                    <span className={clsx(
-                                        'relative inline-flex rounded-full h-2 w-2 transition-colors duration-300',
-                                        isListening ? 'bg-yellow-400' : 'bg-green-500'
-                                    )} />
-                                </span>
-                                {isSpeaking ? "Speaking..." : "Listening..."}
-                            </p>
-                        )}
                     </div>
                 </div>
                 <div className='flex items-center gap-1'>
@@ -1969,29 +1996,46 @@ export default function RightChatPanel() {
                         </button>
                     )}
                     <button
+                        type='button'
+                        onClick={toggleListening}
+                        className={clsx(
+                            'relative w-9 h-9 flex items-center justify-center rounded-xl transition-all duration-200',
+                            isVoiceMode
+                                ? 'bg-blue-50 text-[#1e3a5f] hover:bg-blue-100'
+                                : 'text-[#8a99a8] hover:text-slate-600 hover:bg-slate-50'
+                        )}
+                        title={isVoiceMode ? "Stop voice mode" : "Start voice mode"}
+                    >
+                        {isVoiceMode ? (
+                            <>
+                                <Mic size={18} />
+                                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[#1e3a5f] rounded-full" />
+                            </>
+                        ) : (
+                            <MicOff size={18} />
+                        )}
+                    </button>
+                    <button
+                        type='button'
                         onClick={() => {
                             setIsMuted(!isMuted);
                         }}
                         className={clsx(
-                            'p-2 rounded-full transition-all',
-                            isMuted ? 'text-gray-400 bg-gray-50' : 'text-gray-400 hover:text-blue-600 hover:bg-blue-50'
+                            'relative w-9 h-9 flex items-center justify-center rounded-xl transition-all duration-200',
+                            !isMuted
+                                ? 'bg-blue-50 text-[#1e3a5f] hover:bg-blue-100'
+                                : 'text-[#8a99a8] hover:text-slate-600 hover:bg-slate-50'
                         )}
                         title={isMuted ? "Unmute Speaker" : "Mute Speaker"}
                     >
-                        {isMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
-                    </button>
-                    <button
-                        type='button'
-                        onClick={toggleListening}
-                        className={clsx(
-                            'p-2 rounded-full transition-all',
-                            isVoiceMode
-                                ? 'bg-red-50 text-red-500 hover:bg-red-100 shadow-[0_0_15px_rgba(239,68,68,0.3)] animate-pulse hover:animate-none'
-                                : 'text-gray-400 hover:text-[#1e3a5f] hover:bg-gray-100'
+                        {!isMuted ? (
+                            <>
+                                <Volume2 size={18} />
+                                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[#1e3a5f] rounded-full" />
+                            </>
+                        ) : (
+                            <VolumeX size={18} />
                         )}
-                        title={isVoiceMode ? "Stop voice mode" : "Start voice mode"}
-                    >
-                        {isVoiceMode ? <X size={18} /> : <Mic size={18} />}
                     </button>
                     <button
                         onClick={() => {
@@ -1999,11 +2043,52 @@ export default function RightChatPanel() {
                             stopSpeech();
                             closeChat();
                         }}
-                        className='text-gray-400 hover:text-red-500 transition-all p-2 hover:bg-red-50 rounded-full'>
+                        className='text-[#8a99a8] hover:text-red-500 transition-all w-9 h-9 flex items-center justify-center hover:bg-red-50 rounded-xl'>
                         <X size={20} />
                     </button>
+                    <div className="relative flex-shrink-0" ref={headerMenuRef}>
+                        <button
+                            type="button"
+                            onClick={() => setIsHeaderMenuOpen(!isHeaderMenuOpen)}
+                            className={clsx(
+                                "w-9 h-9 flex items-center justify-center rounded-xl transition-all duration-200 text-[#8a99a8] hover:text-slate-600 hover:bg-slate-50",
+                                isHeaderMenuOpen && "bg-slate-50 text-slate-600"
+                            )}
+                            title="More options"
+                        >
+                            <MoreVertical size={18} />
+                        </button>
+                        {isHeaderMenuOpen && (
+                            <div className="absolute right-0 mt-1 w-32 bg-white border border-slate-200 rounded-xl shadow-lg py-1 z-[100] animate-fade-in origin-top-right">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setMessages([]);
+                                        stopSpeech();
+                                        setIsHeaderMenuOpen(false);
+                                    }}
+                                    className="w-full text-left px-3 py-2 text-xs text-red-600 hover:bg-red-50 font-bold transition-colors flex items-center gap-2 border-b border-slate-100"
+                                >
+                                    <Trash2 size={14} className="text-red-500" />
+                                    <span>Clear</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setIsHeaderMenuOpen(false);
+                                        fileInputRef.current?.click();
+                                    }}
+                                    className="w-full text-left px-3 py-2 text-xs text-slate-600 hover:bg-slate-50 font-bold transition-colors flex items-center gap-2"
+                                >
+                                    <Paperclip size={14} className="text-slate-400" />
+                                    <span>Upload</span>
+                                </button>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
+
 
             {/* Main Chat Content Area */}
             <div className='flex-1 flex overflow-hidden'>
@@ -2127,6 +2212,22 @@ export default function RightChatPanel() {
                                         ? "items-end ml-auto max-w-[85%]"
                                         : "max-w-[85%]",
                                 )}>
+                                {/* Label above user message bubble (Voice indication) */}
+                                {msg.sender === "user" && msg.inputType === "voice" && (
+                                    <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 select-none mr-1.5">
+                                        <Mic size={11} className="text-slate-400" />
+                                        <span>Voice</span>
+                                    </div>
+                                )}
+
+                                {/* Label above assistant message bubble (Spoken indication) */}
+                                {msg.sender === "assistant" && msg.wasSpoken && (
+                                    <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 select-none ml-1.5">
+                                        <Volume2 size={11} className="text-slate-400" />
+                                        <span>Spoken</span>
+                                    </div>
+                                )}
+
                                 <div
                                     className={clsx(
                                         "py-2 px-3.5 text-[13.5px] leading-relaxed transition-all duration-300",
@@ -2308,40 +2409,69 @@ export default function RightChatPanel() {
                     </div>
 
                     {/* Input Section */}
-                    <div className='p-4 bg-white/80 backdrop-blur-md border-t border-slate-200/60'>
-                        {inputMode === null ? (
-                            <div className='flex items-center gap-3'>
-                                <button
-                                    type='button'
-                                    onClick={() => {
-                                        setInputMode("voice");
-                                        setTimeout(() => toggleListening(), 100);
-                                    }}
-                                    className='flex-1 flex items-center justify-center gap-2 py-2.5 rounded-2xl bg-gradient-to-b from-[#1e3a5f]/80 to-[#1e3a5f]/60 backdrop-blur-2xl text-white font-semibold text-sm border-t border-white/25 border-r border-white/10 border-b border-white/5 border-l border-white/10 shadow-2xl shadow-black/20 hover:from-[#1e3a5f]/85 hover:to-[#1e3a5f]/70 transition-all duration-300 active:scale-[0.98] animate-fade-in'>
-                                    <Mic size={16} />
-                                    Speak
-                                </button>
-                                <button
-                                    type='button'
-                                    onClick={() => setInputMode("text")}
-                                    className='flex-1 flex items-center justify-center gap-2 py-2.5 rounded-2xl bg-gradient-to-b from-white/80 to-white/60 backdrop-blur-2xl text-[#1e3a5f] font-semibold text-sm border-t border-white/90 border-r border-white/50 border-b border-white/30 border-l border-white/50 shadow-2xl shadow-black/10 hover:from-white/90 hover:to-white/70 transition-all duration-300 active:scale-[0.98] animate-fade-in'>
-                                    Text
-                                </button>
+                    <div className='bg-white border-t border-slate-100 flex flex-col'>
+                        {/* Status Bar */}
+                        {(isListening || isSpeaking) && (
+                            <div className={clsx(
+                                "flex items-center gap-3 px-6 py-2.5 border-b select-none text-[13px] font-semibold animate-fade-in text-slate-800",
+                                isListening && "bg-yellow-50/50 border-yellow-100/50",
+                                isSpeaking && "bg-green-50/50 border-green-100/50"
+                            )}>
+                                <div className="flex items-center gap-2">
+                                    {/* Soundwave animation */}
+                                    <div className="flex items-end gap-[3px] h-3 w-5 pb-[1px] origin-bottom">
+                                        <span className={clsx(
+                                            "w-[3px] rounded-full animate-microwave origin-bottom",
+                                            isListening ? "bg-[#eab308]" : "bg-green-500"
+                                        )} style={{ height: '70%', animationDelay: '0.1s' }} />
+                                        <span className={clsx(
+                                            "w-[3px] rounded-full animate-microwave origin-bottom",
+                                            isListening ? "bg-[#eab308]" : "bg-green-500"
+                                        )} style={{ height: '100%', animationDelay: '0.25s' }} />
+                                        <span className={clsx(
+                                            "w-[3px] rounded-full animate-microwave origin-bottom",
+                                            isListening ? "bg-[#eab308]" : "bg-green-500"
+                                        )} style={{ height: '60%', animationDelay: '0.4s' }} />
+                                        <span className={clsx(
+                                            "w-[3px] rounded-full animate-microwave origin-bottom",
+                                            isListening ? "bg-[#eab308]" : "bg-green-500"
+                                        )} style={{ height: '80%', animationDelay: '0.55s' }} />
+                                    </div>
+                                    <span>
+                                        {isListening ? "Listening" : "Speaking"}
+                                    </span>
+                                </div>
                             </div>
-                        ) : (
+                        )}
+
+                        <div className="p-4 flex flex-col gap-2">
+                            {/* Input Form Card */}
                             <form
                                 onSubmit={(e) => {
                                     e.preventDefault();
                                     handleSend();
                                 }}
-                                className='flex items-center gap-2 bg-white rounded-2xl border-2 border-slate-300 p-1.5 focus-within:border-[#1e3a5f] focus-within:ring-2 focus-within:ring-[#1e3a5f]/20 transition-all shadow-sm'>
+                                className='flex items-center gap-2 bg-white rounded-2xl border-2 border-slate-300 p-1.5 focus-within:border-[#1e3a5f] focus-within:ring-2 focus-within:ring-[#1e3a5f]/20 transition-all shadow-sm'
+                            >
                                 <input
                                     type='text'
-                                    placeholder={isListening ? "Listening..." : "Ask Nina something..."}
-
+                                    placeholder={isVoiceMode ? "Type here, or keep talking..." : "Ask Nina something..."}
                                     value={inputValue}
-                                    onChange={(e) => setInputValue(e.target.value)}
-                                    className='flex-1 min-w-0 bg-transparent text-gray-900 text-[13px] outline-none py-2 px-1 placeholder:text-gray-400 font-medium'
+                                    onChange={(e) => {
+                                        setInputValue(e.target.value);
+                                        if (isVoiceMode) {
+                                            recognitionRef.current?.stop();
+                                            setIsListening(false);
+                                            isListeningRef.current = false;
+                                            setIsVoiceMode(false);
+                                            isVoiceModeRef.current = false;
+                                            if (silenceTimerRef.current) {
+                                                clearTimeout(silenceTimerRef.current);
+                                                silenceTimerRef.current = null;
+                                            }
+                                        }
+                                    }}
+                                    className='flex-1 min-w-0 bg-transparent text-slate-800 text-sm outline-none py-1.5 px-3 placeholder:text-slate-400 font-medium'
                                 />
                                 <input
                                     type='file'
@@ -2352,25 +2482,35 @@ export default function RightChatPanel() {
                                 />
                                 <button
                                     type='button'
-                                    onClick={() => fileInputRef.current?.click()}
-                                    className="p-2.5 rounded-xl transition-all text-gray-500 hover:text-[#1e3a5f] hover:bg-gray-50 hover:border-gray-200"
-                                    title="Upload bill or document"
+                                    onClick={toggleListening}
+                                    className={clsx(
+                                        'flex items-center gap-1.5 px-3 py-1.5 rounded-full font-bold text-xs transition-all duration-200 shadow-sm flex-shrink-0',
+                                        isVoiceMode
+                                            ? 'bg-[#1e3a5f] text-white hover:bg-[#152943]'
+                                            : 'bg-blue-50 text-[#1e3a5f] border border-blue-100 hover:bg-blue-100'
+                                    )}
                                 >
-                                    <Paperclip size={20} />
+                                    <Phone size={12} className={isVoiceMode ? "text-white" : "text-[#1e3a5f]"} />
+                                    <span>{isVoiceMode ? "Talk on" : "Talk"}</span>
                                 </button>
+
                                 <button
                                     type='submit'
                                     disabled={!inputValue.trim() || isTyping}
                                     className={clsx(
-                                        "p-2.5 rounded-xl transition-all shadow-md",
+                                        'w-8 h-8 rounded-full flex items-center justify-center transition-all duration-200 flex-shrink-0',
                                         inputValue.trim() && !isTyping
-                                            ? "bg-[#1e3a5f] text-white hover:bg-[#162a45] hover:scale-105 active:scale-100"
-                                            : "bg-gray-100 text-gray-300 shadow-none cursor-not-allowed",
-                                    )}>
-                                    <Send size={18} />
+                                            ? 'bg-[#1e3a5f] text-white hover:bg-[#152943] shadow-sm hover:scale-105'
+                                            : 'bg-slate-200 text-white cursor-not-allowed'
+                                    )}
+                                >
+                                    <Send size={14} className="translate-x-[0.5px] -translate-y-[0.5px]" />
                                 </button>
                             </form>
-                        )}
+
+                            {/* Footer text */}
+                            <p className='text-[10px] text-gray-500 text-right mt-1 select-none font-medium'>Nina · AgenQ</p>
+                        </div>
                     </div></div></div>
 
             {/* Image Preview Modal */}
