@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import Agent from "@/components/Agent";
+import { AgenQAgent } from "@/components/AgenQAgent";
 import AgentProvider from "@/components/AgentProvider";
 import { ChatProvider } from "@/context/ChatContext";
 import RightChatPanel from "@/components/RightChatPanel";
@@ -35,11 +36,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang='en'>
+    <html lang="en">
       <body className="font-[Arial,sans-serif] antialiased">
         <ChatProvider>
           <PageWrapper>
             {children}
+            <AgenQAgent />
             <AgentProvider />
           </PageWrapper>
           <RightChatPanel />
