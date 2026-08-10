@@ -2571,7 +2571,16 @@ export default function RightChatPanel() {
                                                             stopSpeech();
                                                             setIsMuted(false);
                                                             isMutedRef.current = false;
-                                                            handleSend("Training Mode (Sample Data)");
+                                                            
+                                                            const userMsg: Message = {
+                                                                id: Date.now().toString(),
+                                                                text: "Training Mode (Sample Data)",
+                                                                sender: "user",
+                                                                timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+                                                                inputType: "text"
+                                                            };
+                                                            setMessages(prev => [...prev, userMsg]);
+                                                            
                                                             // Interactive Guide Logic
                                                             const navItem = document.getElementById("nav-item-corporate-customers");
                                                             if (navItem) {
@@ -2580,7 +2589,7 @@ export default function RightChatPanel() {
                                                                 await streamMessage("Please select the Corporate Customer tab on the sidebar.", "assistant");
                                                                 isInterruptedRef.current = true;
                                                                 setGuideTargetId(null);
-                                                                await new Promise((r) => setTimeout(r, 600));
+                                                                await new Promise((r) => setTimeout(r, 1500));
 
                                                                 localStorage.setItem("max_guide_step", "add_customer");
                                                                 router.push("/corporate-customers");
@@ -2594,6 +2603,16 @@ export default function RightChatPanel() {
                                                             stopSpeech();
                                                             setIsMuted(false);
                                                             isMutedRef.current = false;
+                                                            
+                                                            const userMsg: Message = {
+                                                                id: Date.now().toString(),
+                                                                text: "Training Mode (Sample Data)",
+                                                                sender: "user",
+                                                                timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+                                                                inputType: "text"
+                                                            };
+                                                            setMessages(prev => [...prev, userMsg]);
+                                                            
                                                             // Interactive Guide Logic for Claims
                                                             const navItem = document.getElementById("nav-item-claims");
                                                             if (navItem) {
@@ -2602,7 +2621,7 @@ export default function RightChatPanel() {
                                                                 await streamMessage("Please select the Claims tab in the sidebar.", "assistant");
                                                                 isInterruptedRef.current = true; // Keep mic off until the guide sequence finishes so it can't cut the next sentence
                                                                 setGuideTargetId(null);
-                                                                await new Promise((r) => setTimeout(r, 600));
+                                                                await new Promise((r) => setTimeout(r, 1000));
 
                                                                 // 2. Speak the next part fully, then navigate
                                                                 await streamMessage("Let's file a sample claim to show you how it works.", "assistant");
