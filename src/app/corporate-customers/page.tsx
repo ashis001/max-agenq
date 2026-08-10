@@ -48,7 +48,7 @@ export default function CorporateListingPage() {
                 setActiveGuide("add_customer");
                 // Final instruction on listing page
                 openChat("Now, please click on the 'Add New Customer' button in the top right corner.");
-            }, 800);
+            }, 1500);
             return () => clearTimeout(timer);
         }
 

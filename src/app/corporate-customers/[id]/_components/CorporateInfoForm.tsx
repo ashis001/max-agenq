@@ -7,6 +7,7 @@ import * as z from "zod";
 import { Corporate } from "@/lib/types";
 import { useCorporateEngine } from "./useCorporateEngine";
 import { Loader2, UploadCloud, MousePointer2 } from "lucide-react";
+import MaxGuidePointer from "@/components/MaxGuidePointer";
 import { speakText } from "@/lib/google-tts";
 import { useEffect, useState, useRef } from "react";
 import clsx from "clsx";
@@ -129,7 +130,7 @@ export function CorporateInfoForm({ engine }: { engine: ReturnType<typeof useCor
     const emailValue = watch("contacts.0.email");
     const roleValue = watch("contacts.0.role");
 
-    const { openChat, isMuted, isWorkflowPaused, isWorkflowActive, setIsWorkflowActive } = useChat();
+    const { openChat, isMuted, setIsMuted, isWorkflowPaused, isWorkflowActive, setIsWorkflowActive } = useChat();
     const isWorkflowPausedRef = useRef(isWorkflowPaused);
     const isWorkflowActiveRef = useRef(isWorkflowActive);
 
@@ -141,52 +142,8 @@ export function CorporateInfoForm({ engine }: { engine: ReturnType<typeof useCor
     const [isSubmittingHighlighted, setIsSubmittingHighlighted] = useState(false);
     const [countdown, setCountdown] = useState<number | null>(null);
     const timerRef = useRef<NodeJS.Timeout | null>(null);
-    const [pointerPos, setPointerPos] = useState<{ top: number, left: number } | null>(null);
     const formRef = useRef<HTMLFormElement>(null);
-
-    // Continuous Pointer Re-sync Effect
-    useEffect(() => {
-        if (!activeFillingField) {
-            setPointerPos(null);
-            return;
-        }
-
-        const updatePosition = () => {
-            const el = document.getElementById(activeFillingField);
-            const formEl = formRef.current;
-            if (el && formEl) {
-                const rect = el.getBoundingClientRect();
-                const formRect = formEl.getBoundingClientRect();
-                // Position pointer exactly above the center of the element, relative to form container
-                // This fix bypasses the transform-containing-block issue caused by parents using CSS animations
-                setPointerPos({
-                    top: rect.top - formRect.top,
-                    left: rect.left - formRect.left + rect.width / 2
-                });
-            }
-        };
-
-        // Update immediately
-        updatePosition();
-
-        // Then on every frame for perfect sync during scrolls/animations
-        let rafId: number;
-        const tick = () => {
-            updatePosition();
-            rafId = requestAnimationFrame(tick);
-        };
-        rafId = requestAnimationFrame(tick);
-
-        window.addEventListener('resize', updatePosition);
-        window.addEventListener('scroll', updatePosition, true);
-
-        return () => {
-            cancelAnimationFrame(rafId);
-            window.removeEventListener('resize', updatePosition);
-            window.removeEventListener('scroll', updatePosition, true);
-        };
-    }, [activeFillingField]);
-
+    
     const VOICE_MESSAGES: Record<string, string> = {
         "broker": "Select the designated broker to ensure correct commission and account management.",
         "selectProfile": "Select the insurance profile that best matches your group's coverage requirements.",
@@ -228,6 +185,7 @@ export function CorporateInfoForm({ engine }: { engine: ReturnType<typeof useCor
                 try {
                     setIsWorkflowActive(true);
                     isWorkflowActiveRef.current = true; // Sync ref immediately to prevent race condition
+                    setIsMuted(false); // Unmute speaker for workflow voice guide
                     // Helper for natural delay
                     const delay = async (ms: number) => {
                         if (!isWorkflowActiveRef.current) throw new Error("WorkflowCancelled");
@@ -364,7 +322,6 @@ export function CorporateInfoForm({ engine }: { engine: ReturnType<typeof useCor
                     // Final Step: Submit Button Highlight
                     await delay(500);
                     setIsSubmittingHighlighted(true);
-                    setIsWorkflowActive(false);
 
                     const finalMsg = "Excellent. This HR contact is now configured. Please click the 'Save & Next' button below to navigate to the next step.";
                     openChat(finalMsg, true); // Silent mode to prevent repetition
@@ -465,6 +422,9 @@ export function CorporateInfoForm({ engine }: { engine: ReturnType<typeof useCor
                 const type = localStorage.getItem("onboarding_type");
                 if (type === "real") {
                     localStorage.setItem("max_guide_step", "tier_config_real");
+                    setIsWorkflowActive(true);
+                } else if (type === "sample" || isWorkflowActive) {
+                    localStorage.setItem("max_guide_step", "tier_config");
                     setIsWorkflowActive(true);
                 }
             }
@@ -946,6 +906,7 @@ export function CorporateInfoForm({ engine }: { engine: ReturnType<typeof useCor
                             <div className="bg-white p-4">
                                 <input
                                     type="text"
+                                    id="employeeCount"
                                     {...register("employeeCount")}
                                     className={clsx(
                                         "w-full rounded border px-3 py-1.5 text-sm transition-all duration-300 shadow-sm",
@@ -991,26 +952,9 @@ export function CorporateInfoForm({ engine }: { engine: ReturnType<typeof useCor
                     Save & Next →
                 </button>
             </div>
-            {/* Refined Arrow Pointer Indicator (Follows pointerPos state) */}
-            {activeFillingField && pointerPos && (
-                <div
-                    className="absolute z-[10000] pointer-events-none transition-all duration-500 ease-in-out"
-                    style={{
-                        left: pointerPos.left,
-                        top: pointerPos.top - 10,
-                        transform: 'translate(-50%, -100%)'
-                    }}
-                >
-                    <div className="relative flex flex-col items-center animate-Nina-pointer-float">
-                        {/* The Sharp Pointer Icon - Rotated to point directly down */}
-                        <div className="text-red-500 filter drop-shadow-[0_4px_12px_rgba(239,68,68,0.4)] transform rotate-[225deg]">
-                            <MousePointer2 className="w-6 h-6 fill-red-500" />
-                        </div>
-
-                        {/* Smooth Pulse Animation (Restored to centered halo) */}
-                        <div className="absolute inset-0 -m-1 rounded-full bg-red-500 animate-ping opacity-20 scale-125" />
-                    </div>
-                </div>
+            {/* Refined Arrow Pointer Indicator (Tracks activeFillingField by ID) */}
+            {activeFillingField && (
+                <MaxGuidePointer targetId={activeFillingField} text="Fill field" />
             )}
 
             <style jsx global>{`

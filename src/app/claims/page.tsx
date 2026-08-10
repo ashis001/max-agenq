@@ -9,6 +9,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useChat } from "@/context/ChatContext";
 import { speakText } from "@/lib/google-tts";
 import { MousePointer2 } from "lucide-react";
+import MaxGuidePointer from "@/components/MaxGuidePointer";
 import { useRouter } from "next/navigation";
 
 const AnimatedGrid = () => (
@@ -68,7 +69,7 @@ const INSURANCE_TYPES = [
 
 export default function ClaimsPage() {
     const router = useRouter();
-    const { toggleChat, openChat, isWorkflowPaused, isWorkflowActive, setIsWorkflowActive, setSubmittedClaimId, submittedClaimId } = useChat();
+    const { toggleChat, openChat, setIsMuted, isWorkflowPaused, isWorkflowActive, setIsWorkflowActive, setSubmittedClaimId, submittedClaimId } = useChat();
     const isWorkflowPausedRef = useRef(isWorkflowPaused);
     const isWorkflowActiveRef = useRef(isWorkflowActive);
 
@@ -118,6 +119,7 @@ export default function ClaimsPage() {
                 try {
                     setIsWorkflowActive(true);
                     isWorkflowActiveRef.current = true; // Sync ref immediately
+                    setIsMuted(false);
 
                     const delay = async (ms: number) => {
                         if (!isWorkflowActiveRef.current) throw new Error("WorkflowCancelled");
@@ -387,22 +389,8 @@ export default function ClaimsPage() {
                 <AnimatedGrid />
 
                 {/* Pointer Indicator */}
-                {activeFillingField && pointerPos && (
-                    <div
-                        className="absolute z-[10000] pointer-events-none transition-all duration-500 ease-in-out"
-                        style={{
-                            left: pointerPos.left,
-                            top: pointerPos.top,
-                            transform: 'translate(-50%, -100%)'
-                        }}
-                    >
-                        <div className="relative flex flex-col items-center animate-Nina-pointer-float">
-                            <div className="text-red-500 filter drop-shadow-[0_4px_12px_rgba(239,68,68,0.4)] transform rotate-[225deg]">
-                                <MousePointer2 className="w-8 h-8 fill-red-500" />
-                            </div>
-                            <div className="absolute inset-0 -m-2 rounded-full bg-red-500 animate-ping opacity-20 scale-[1.5]" />
-                        </div>
-                    </div>
+                {activeFillingField && (
+                    <MaxGuidePointer targetId={activeFillingField} text="Fill field" />
                 )}
 
                 {/* Dynamic Background Accents */}

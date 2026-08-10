@@ -33,6 +33,7 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useChat } from "@/context/ChatContext";
+import MaxGuidePointer from "@/components/MaxGuidePointer";
 import { fetchAllCorporates, deleteCorporate } from "@/lib/db";
 import { Corporate } from "@/lib/types";
 import { speakText, stopSpeech } from "@/lib/google-tts";
@@ -365,7 +366,7 @@ export default function RightChatPanel() {
         });
     };
 
-    const [guideTargetRect, setGuideTargetRect] = useState<{ top: number, left: number, width: number, height: number } | null>(null);
+    const [guideTargetId, setGuideTargetId] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const [isHeaderMenuOpen, setIsHeaderMenuOpen] = useState(false);
@@ -652,6 +653,7 @@ export default function RightChatPanel() {
 
     const speakWithIndicator = async (text: string) => {
         try {
+            hasSpokenActiveMessageRef.current = true;
             // Stop listening before speaking to prevent state conflicts ONLY if not in voice mode
             if (isListeningRef.current && !isVoiceModeRef.current) {
                 recognitionRef.current?.stop();
@@ -680,24 +682,30 @@ export default function RightChatPanel() {
     };
 
     // Effect to handle unmuting while a message is being typed
+    const hasSpokenActiveMessageRef = useRef(false);
     useEffect(() => {
-        if (!isMuted && activeMessageTextRef.current && isTyping && !isSpeaking) {
+        if (!isMuted && activeMessageTextRef.current && isTyping && !isSpeaking && !hasSpokenActiveMessageRef.current) {
+            hasSpokenActiveMessageRef.current = true;
             speakWithIndicator(activeMessageTextRef.current);
         }
     }, [isMuted, isTyping, isSpeaking]);
 
 
 
-    const streamMessage = async (text: string, sender: "assistant" | "user", actions?: { label: string; value: string }[], skipStream?: boolean, customType?: string) => {
+    const activeStreamIdRef = useRef<string | null>(null);
+
+    const streamMessage = async (text: string, sender: "assistant" | "user", actions?: { label: string; value: string }[], skipStream?: boolean, customType?: string): Promise<boolean> => {
         isInterruptedRef.current = false;
-        const id = Date.now().toString();
+        hasSpokenActiveMessageRef.current = false;
+        const id = Date.now().toString() + Math.random().toString(36).substr(2, 9);
+        activeStreamIdRef.current = id;
         const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
         const shouldBeSpoken = sender === "assistant" && !isMutedRef.current;
 
         if (skipStream) {
             setMessages(prev => [...prev, { id, text, sender, timestamp, actions, customType, wasSpoken: shouldBeSpoken }]);
-            return;
+            return true;
         }
 
         const baseMsg: Message = {
@@ -717,18 +725,20 @@ export default function RightChatPanel() {
         const speechPromise = shouldBeSpoken ? speakWithIndicator(text) : Promise.resolve();
 
         for (let i = 0; i < words.length; i++) {
-            if (isInterruptedRef.current) return;
+            if (isInterruptedRef.current || activeStreamIdRef.current !== id) return false;
 
             currentText += (i === 0 ? "" : " ") + words[i];
             setMessages(prev => prev.map(m => m.id === id ? { ...m, text: currentText } : m));
             await new Promise(resolve => setTimeout(resolve, 150));
         }
 
-        if (actions && !isInterruptedRef.current) {
+        if (actions && !isInterruptedRef.current && activeStreamIdRef.current === id) {
             setMessages(prev => prev.map(m => m.id === id ? { ...m, actions } : m));
         }
 
-        await speechPromise;
+        if (activeStreamIdRef.current === id) {
+            await speechPromise;
+        }
         activeMessageTextRef.current = null;
 
         // Auto-reactivate mic if voice mode is active and not interrupted
@@ -765,6 +775,7 @@ export default function RightChatPanel() {
                 }
             }, 1000); // Increased delay to 1000ms to allow audio device to fully release
         }
+        return activeStreamIdRef.current === id;
     };
 
     const hasTriggeredGreetingRef = useRef(false);
@@ -785,7 +796,7 @@ export default function RightChatPanel() {
             if (!isInterruptedRef.current) {
                 await streamMessage(secondMsg, "assistant");
                 // Automatically turn speaker OFF after default greeting message finishes speaking
-                setIsMuted(true);
+                if (!isInterruptedRef.current) setIsMuted(true);
             }
             greetingTimeoutRef.current = null;
         }, 1000);
@@ -860,7 +871,8 @@ export default function RightChatPanel() {
                     }
 
                     // Automatically turn speaker OFF after load-time greeting/message finishes speaking
-                    setIsMuted(true);
+                    // Only apply this to the standard greeting to prevent muting workflow instructions
+                    if (isStandardGreeting && !isSilent && !isInterruptedRef.current) setIsMuted(true);
 
                     clearExternalMessage();
                 }, 500);
@@ -990,7 +1002,6 @@ export default function RightChatPanel() {
             isListeningRef.current = false;
             setIsVoiceMode(false);
             isVoiceModeRef.current = false;
-            setIsSpeaking(false);
             isSpeakingRef.current = false;
             setIsMuted(true);
             stopSpeech();
@@ -2104,6 +2115,9 @@ export default function RightChatPanel() {
                 }
             } else if (query.includes("count") || query.includes("how many")) {
                 responseText = `There are currently **${corporates.length}** corporate customers registered in your dashboard.`;
+            } else if (query.includes("training mode") || query.includes("execution mode") || query.includes("sample data") || query.includes("real data")) {
+                // Ignore internal mode switches so they don't trigger a fallback response
+                responseText = "";
             } else {
                 // Try searching for a specific corporate name
                 const found = corporates.find((c) =>
@@ -2544,7 +2558,7 @@ export default function RightChatPanel() {
                                             {msg.actions.map((action, idx) => (
                                                 <button
                                                     key={idx}
-                                                    onClick={(e) => {
+                                                    onClick={async (e) => {
                                                         e.preventDefault();
                                                         e.stopPropagation();
                                                         // Clear pending context immediately
@@ -2553,57 +2567,47 @@ export default function RightChatPanel() {
                                                         if (action.value === "real") {
                                                             handleSend("Execution Mode (Real Data)");
                                                         } else if (action.value === "sample") {
+                                                            isInterruptedRef.current = true;
+                                                            stopSpeech();
+                                                            setIsMuted(false);
+                                                            isMutedRef.current = false;
                                                             handleSend("Training Mode (Sample Data)");
                                                             // Interactive Guide Logic
                                                             const navItem = document.getElementById("nav-item-corporate-customers");
                                                             if (navItem) {
-                                                                // 1. Speak & Show Message
-                                                                streamMessage("Please select the Corporate Customer tab on the sidebar.", "assistant");
+                                                                // 1. Speak & Show Message (cursor flies immediately, speech always completes first)
+                                                                setGuideTargetId("nav-item-corporate-customers");
+                                                                await streamMessage("Please select the Corporate Customer tab on the sidebar.", "assistant");
+                                                                isInterruptedRef.current = true;
+                                                                setGuideTargetId(null);
+                                                                await new Promise((r) => setTimeout(r, 600));
 
-                                                                const rect = navItem.getBoundingClientRect();
-                                                                setGuideTargetRect({
-                                                                    top: rect.top,
-                                                                    left: rect.left,
-                                                                    width: rect.width,
-                                                                    height: rect.height
-                                                                });
-
-                                                                // 2. Wait 4 seconds, Speak next part, then Navigate
-                                                                setTimeout(async () => {
-                                                                    setGuideTargetRect(null);
-                                                                    await streamMessage("Let’s start by creating the company profile.", "assistant");
-
-                                                                    localStorage.setItem("max_guide_step", "add_customer");
-                                                                    router.push("/corporate-customers");
-                                                                }, 4000);
+                                                                localStorage.setItem("max_guide_step", "add_customer");
+                                                                router.push("/corporate-customers");
                                                             } else {
                                                                 // Fallback
                                                                 localStorage.setItem("max_guide_step", "add_customer");
                                                                 router.push("/corporate-customers");
-                                                            }
+                                                                }
                                                         } else if (action.value === "sample_claim") {
+                                                            isInterruptedRef.current = true;
+                                                            stopSpeech();
+                                                            setIsMuted(false);
+                                                            isMutedRef.current = false;
                                                             // Interactive Guide Logic for Claims
                                                             const navItem = document.getElementById("nav-item-claims");
                                                             if (navItem) {
-                                                                // 1. Speak & Show Message
-                                                                streamMessage("Please select the Claims tab in the sidebar.", "assistant");
+                                                                // 1. Speak & Show Message (cursor flies immediately, speech always completes first)
+                                                                setGuideTargetId("nav-item-claims");
+                                                                await streamMessage("Please select the Claims tab in the sidebar.", "assistant");
+                                                                isInterruptedRef.current = true; // Keep mic off until the guide sequence finishes so it can't cut the next sentence
+                                                                setGuideTargetId(null);
+                                                                await new Promise((r) => setTimeout(r, 600));
 
-                                                                const rect = navItem.getBoundingClientRect();
-                                                                setGuideTargetRect({
-                                                                    top: rect.top,
-                                                                    left: rect.left,
-                                                                    width: rect.width,
-                                                                    height: rect.height
-                                                                });
-
-                                                                // 2. Wait for a moment to show the pointer, then speak next part and navigate
-                                                                setTimeout(async () => {
-                                                                    setGuideTargetRect(null);
-                                                                    await streamMessage("Let's file a sample claim to show you how it works.", "assistant");
-
-                                                                    localStorage.setItem("max_guide_step", "claim_insurance");
-                                                                    router.push("/claims");
-                                                                }, 4000); // Time to allow for speech and pointer display
+                                                                // 2. Speak the next part fully, then navigate
+                                                                await streamMessage("Let's file a sample claim to show you how it works.", "assistant");
+                                                                localStorage.setItem("max_guide_step", "claim_insurance");
+                                                                router.push("/claims");
                                                             } else {
                                                                 // Fallback
                                                                 localStorage.setItem("max_guide_step", "claim_insurance");
@@ -2840,42 +2844,8 @@ export default function RightChatPanel() {
                 document.body
             )}
 
-            {guideTargetRect && typeof document !== "undefined" && createPortal(
-                <div
-                    style={{
-                        position: "fixed",
-                        // Position BELOW the element (top + height)
-                        top: guideTargetRect.top + guideTargetRect.height + 10,
-                        // Center horizontally
-                        left: guideTargetRect.left + guideTargetRect.width / 2,
-                        zIndex: 999999,
-                        pointerEvents: "none",
-                        // Center the div, but minimal vertical offset since we are positioning relative to top
-                        transform: "translate(-50%, 0)"
-                    }}
-                >
-                    <div className="relative flex flex-col items-center">
-                        {/* Rotate 180 (or appropriate arithmetic) if we want it to point UP?
-                            MousePointer2 points Top-Left by default.
-                            If we want it to point UP, we need to rotate somewhat.
-                            MaxGuidePointer uses rotate-[45deg] to point "inwards/up"?
-                            Let's try sticking to the request: "Tip should up".
-                            MousePointer2 (10 o'clock) -> Rotate 135deg -> 3 o'clock?
-                            Rotate -45 -> 9 o'clock.
-                            Rotate -90 -> 7 o'clock.
-                            Actually, simpler: Just use rotate-[-45deg] or rotate-[45deg] depending on visual preference.
-                            Let's use the explicit request: "tip should up".
-                            Default is Top-Left. 
-                            rotate(45deg) -> Top.
-                            Let's try that.
-                         */}
-                        <div className="text-red-500 filter drop-shadow-[0_4px_12px_rgba(239,68,68,0.4)] animate-bounce transform rotate-[45deg]">
-                            <MousePointer2 className="w-7 h-7 fill-red-500" />
-                        </div>
-                        <div className="absolute inset-0 rounded-full bg-red-500 animate-ping opacity-20 scale-125" />
-                    </div>
-                </div>,
-                document.body
+            {guideTargetId && typeof document !== "undefined" && (
+                <MaxGuidePointer targetId={guideTargetId} text="Click here" />
             )}
         </div>
     );

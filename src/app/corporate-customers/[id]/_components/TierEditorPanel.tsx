@@ -8,6 +8,7 @@ import clsx from "clsx";
 import { useChat } from "@/context/ChatContext";
 import { speakText } from "@/lib/google-tts";
 import { MousePointer2 } from "lucide-react";
+import MaxGuidePointer from "@/components/MaxGuidePointer";
 import { TIER_VOICE_MESSAGES } from "./tier-speech";
 
 // Type definitions for internal mock data
@@ -1448,26 +1449,9 @@ export function TierEditorPanel({
                     <button onClick={onCancel} className="bg-white border border-slate-300 rounded px-4 md:px-8 pt-24 md:pt-0 pb-4 md:pb-0 py-2 text-[11px] font-black text-[#1e3a5f] hover:bg-slate-50 hover:border-slate-400 transition-all shadow-sm uppercase tracking-wide">Close</button>
                 </div>
 
-                {/* Guide Pointer (Nina's Mouse) - Outside scroll container to stay on top of footer */}
-                {pointerPos && activeFillingField && (
-                    <div
-                        style={{
-                            position: 'absolute',
-                            top: pointerPos.top - 10,
-                            left: pointerPos.left,
-                            transform: 'translate(-50%, -100%)',
-                            pointerEvents: 'none',
-                            zIndex: 10000
-                        }}
-                        className="transition-all duration-300 ease-out"
-                    >
-                        <div className="relative flex flex-col items-center animate-Nina-pointer-float">
-                            <div className="text-red-500 filter drop-shadow-[0_4px_12px_rgba(239,68,68,0.4)] transform rotate-[225deg]">
-                                <MousePointer2 className="w-6 h-6 fill-red-500" />
-                            </div>
-                            <div className="absolute inset-0 -m-1 rounded-full bg-red-500 animate-ping opacity-20 scale-125" />
-                        </div>
-                    </div>
+                {/* Guide Pointer (Nina's Mouse) */}
+                {activeFillingField && (
+                    <MaxGuidePointer targetId={activeFillingField} text="Configure tier" />
                 )}
             </div>
             <style jsx global>{`

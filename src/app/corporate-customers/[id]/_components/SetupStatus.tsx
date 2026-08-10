@@ -2,6 +2,7 @@
 
 import { useCorporateEngine } from "./useCorporateEngine";
 import { ChevronLeft, ChevronRight, X, MousePointer2, Info, Pause, Play } from "lucide-react";
+import MaxGuidePointer from "@/components/MaxGuidePointer";
 import { Tier } from "@/lib/types";
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useChat } from "@/context/ChatContext";
@@ -13,7 +14,7 @@ export function SetupStatus({ engine }: { engine: ReturnType<typeof useCorporate
 
     const [modalState, setModalState] = useState<'NONE' | 'SELECT_SUBDOMAIN' | 'SELECT_ADMINS' | 'SUCCESS'>('NONE');
     const [selectedSubdomain, setSelectedSubdomain] = useState("");
-    const { isWorkflowActive, openChat, setIsWorkflowActive, isMuted, isWorkflowPaused } = useChat();
+    const { isWorkflowActive, openChat, setIsWorkflowActive, isMuted, setIsMuted, isWorkflowPaused } = useChat();
 
     const isWorkflowActiveRef = useRef(isWorkflowActive);
     const isWorkflowPausedRef = useRef(isWorkflowPaused);
@@ -88,6 +89,7 @@ export function SetupStatus({ engine }: { engine: ReturnType<typeof useCorporate
             hasStartedRef.current = true;
 
             const runGuide = async () => {
+                setIsMuted(false);
                 // IMPORTANT: Pausable delay function
                 const delay = async (ms: number) => {
                     if (!isWorkflowActiveRef.current) throw new Error("WorkflowCancelled");
@@ -322,20 +324,8 @@ export function SetupStatus({ engine }: { engine: ReturnType<typeof useCorporate
                 </div>
             )}
 
-            {pointerPos && activeFillingField && (
-                <div
-                    className="absolute z-[10001] pointer-events-none transition-all duration-300 ease-in-out"
-                    style={{
-                        left: pointerPos.left,
-                        top: pointerPos.top - 10,
-                        transform: 'translate(-50%, -100%)'
-                    }}
-                >
-                    <div className="relative flex flex-col items-center animate-Nina-pointer-float">
-                        <div className="text-red-500 filter drop-shadow-[0_4px_12px_rgba(239,68,68,0.4)] transform rotate-[225deg]"><MousePointer2 className="w-6 h-6 fill-red-500" /></div>
-                        <div className="absolute inset-0 -m-1 rounded-full bg-red-500 animate-ping opacity-20 scale-125" />
-                    </div>
-                </div>
+            {activeFillingField && (
+                <MaxGuidePointer targetId={activeFillingField} text="Fill field" />
             )}
 
             <style jsx global>{`

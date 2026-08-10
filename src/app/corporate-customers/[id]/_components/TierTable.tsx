@@ -3,6 +3,7 @@
 import { useCorporateEngine } from "./useCorporateEngine";
 import { Tier } from "@/lib/types";
 import { Trash2, Edit2, Info, Plus, ChevronLeft, ChevronRight, X, Check, MousePointer2, AlertCircle, Copy, CheckCircle2 } from "lucide-react";
+import MaxGuidePointer from "@/components/MaxGuidePointer";
 import { useState, useRef, useEffect } from "react";
 import { TierEditorPanel } from "./TierEditorPanel";
 import clsx from "clsx";
@@ -60,7 +61,7 @@ export function TierTable({ engine }: { engine: ReturnType<typeof useCorporateEn
     }, [activeFillingField]);
 
     // Automation & Cancellation Logic
-    const { openChat, isWorkflowPaused, isWorkflowActive, setIsWorkflowActive } = useChat();
+    const { openChat, setIsMuted, isWorkflowPaused, isWorkflowActive, setIsWorkflowActive } = useChat();
     const isWorkflowPausedRef = useRef(isWorkflowPaused);
     const isWorkflowActiveRef = useRef(isWorkflowActive);
 
@@ -92,6 +93,7 @@ export function TierTable({ engine }: { engine: ReturnType<typeof useCorporateEn
                     // Ensure Nina is ready
                     setIsWorkflowActive(true);
                     isWorkflowActiveRef.current = true;
+                    setIsMuted(false);
 
                     const delay = async (ms: number) => {
                         if (!isWorkflowActiveRef.current) throw new Error("WorkflowCancelled");
@@ -364,25 +366,8 @@ export function TierTable({ engine }: { engine: ReturnType<typeof useCorporateEn
 
     return (
         <div ref={tableRef} className="space-y-0 relative">
-            {activeFillingField && pointerPos && (
-                <div
-                    style={{
-                        position: 'absolute',
-                        top: pointerPos.top - 10,
-                        left: pointerPos.left,
-                        transform: 'translate(-50%, -100%)',
-                        pointerEvents: 'none',
-                        zIndex: 10000
-                    }}
-                    className="transition-all duration-500 ease-in-out"
-                >
-                    <div className="relative flex flex-col items-center animate-Nina-pointer-float">
-                        <div className="text-red-500 filter drop-shadow-[0_4px_12px_rgba(239,68,68,0.4)] transform rotate-[225deg]">
-                            <MousePointer2 className="w-6 h-6 fill-red-500" />
-                        </div>
-                        <div className="absolute inset-0 -m-1 rounded-full bg-red-500 animate-ping opacity-20 scale-125" />
-                    </div>
-                </div>
+            {activeFillingField && (
+                <MaxGuidePointer targetId={activeFillingField} text="Manage Tiers" />
             )}
             {/* Header Navy Bar */}
             <div className="bg-[#0a1e3b] px-4 py-2.5 rounded-t-xl flex items-center justify-between">
