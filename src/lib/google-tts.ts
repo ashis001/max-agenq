@@ -72,7 +72,7 @@ export async function synthesizeSpeech(text: string, options: TTSOptions = {}): 
             },
             audioConfig: {
                 audioEncoding: options.audioEncoding || 'MP3',
-                speakingRate: options.speakingRate || 0.92,
+                speakingRate: options.speakingRate || 1.10,
                 pitch: options.pitch || 0,
             },
         };
@@ -189,7 +189,7 @@ let resolveCurrentAudio: (() => void) | null = null;
 let globalAudioMuted = false;
 
 // Global speaking rate (driven by the playback-speed control in the chat UI).
-let currentSpeakingRate = 0.92;
+let currentSpeakingRate = 1.10;
 
 /**
  * Set the global speaking rate used by speakText when no explicit rate is given.
@@ -305,8 +305,22 @@ export function stopSpeech(): void {
 /**
  * Convenience function to speak text immediately.
  */
+// Dedupe guard: prevent the exact same text from being spoken twice in quick
+// succession (fixes a "Tier Tier ..." stutter where a message is triggered
+// twice — e.g. an effect re-running or the pause re-speak path).
+let lastSpokenText = "";
+let lastSpokenTs = 0;
+
 export async function speakText(text: string, options: TTSOptions = {}): Promise<void> {
     if (globalAudioMuted) return;
+
+    // Skip an immediate duplicate of the same sentence.
+    const now = Date.now();
+    if (text && text === lastSpokenText && now - lastSpokenTs < 1000) {
+        return;
+    }
+    lastSpokenText = text ?? "";
+    lastSpokenTs = now;
 
     // Use the global playback speed rate unless an explicit rate is provided.
     const desiredRate = options.speakingRate ?? currentSpeakingRate;

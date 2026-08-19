@@ -101,18 +101,18 @@ function spawnRipple(x: number, y: number, container: HTMLElement) {
 
 // Global persistent state for seamless navigation jumps
 const getGlobalPos = () => {
-    if (typeof window === 'undefined') return { x: 0, y: 0 };
-    return {
-        x: (window as any).__maxCursorX || window.innerWidth / 2,
-        y: (window as any).__maxCursorY || window.innerHeight / 2
-    };
+  if (typeof window === 'undefined') return { x: 0, y: 0 };
+  return {
+    x: (window as any).__maxCursorX || window.innerWidth / 2,
+    y: (window as any).__maxCursorY || window.innerHeight / 2
+  };
 };
 
 const setGlobalPos = (x: number, y: number) => {
-    if (typeof window !== 'undefined') {
-        (window as any).__maxCursorX = x;
-        (window as any).__maxCursorY = y;
-    }
+  if (typeof window !== 'undefined') {
+    (window as any).__maxCursorX = x;
+    (window as any).__maxCursorY = y;
+  }
 };
 
 
@@ -127,13 +127,13 @@ export default function MaxGuidePointer({
 }: MaxGuidePointerProps) {
   const router = useRouter();
   const anchorRef = useRef<HTMLDivElement>(null);
-  
+
   // Start position at the last known global position to allow CSS transition to fly from there!
   const [pos, setPos] = useState<CursorPos>(() => {
-      const g = getGlobalPos();
-      return { x: g.x, y: g.y, label: text };
+    const g = getGlobalPos();
+    return { x: g.x, y: g.y, label: text };
   });
-  
+
   const [visible, setVisible] = useState(false);
   const [curState, setCurState] = useState<CursorState>("idle");
   const [wind, setWind] = useState(false);
@@ -149,7 +149,7 @@ export default function MaxGuidePointer({
   const windTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const thinkTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const playClickFxRef = useRef<() => void>(() => {});
+  const playClickFxRef = useRef<() => void>(() => { });
 
   // Portal creation + style injection
   useEffect(() => {
@@ -188,92 +188,100 @@ export default function MaxGuidePointer({
 
   // Sync position with inline anchor & trigger flying logic
   useEffect(() => {
+    const getTargetCoordinates = (currentEl: HTMLElement) => {
+      // If the element has a text span, label, or inner text container (like sidebar nav links or action buttons),
+      // target the text itself with pinpoint accuracy.
+      const textSpan = currentEl.querySelector('span.nav-label, span, label, p') as HTMLElement | null;
+      const targetEl = (textSpan && textSpan.offsetWidth > 0 && textSpan.offsetHeight > 0) ? textSpan : currentEl;
+      const rect = targetEl.getBoundingClientRect();
+      return {
+        x: rect.left + rect.width / 2,
+        y: rect.top + rect.height / 2
+      };
+    };
+
     const updatePosSilent = () => {
-        const currentEl = targetId ? document.getElementById(targetId) : anchorRef.current;
-        if (!currentEl) return;
-        const rect = currentEl.getBoundingClientRect();
-        const isInput = currentEl.tagName === 'INPUT' || currentEl.tagName === 'SELECT' || currentEl.tagName === 'TEXTAREA';
-        const targetX = rect.left + rect.width / 2;
-        const targetY = isInput ? rect.top + rect.height / 2 : rect.bottom + 12;
-        setPos(p => ({ ...p, x: targetX, y: targetY }));
-        setGlobalPos(targetX, targetY);
+      const currentEl = targetId ? document.getElementById(targetId) : anchorRef.current;
+      if (!currentEl) return;
+      const { x: targetX, y: targetY } = getTargetCoordinates(currentEl);
+      setPos(p => ({ ...p, x: targetX, y: targetY }));
+      setGlobalPos(targetX, targetY);
     };
 
     const el = targetId ? document.getElementById(targetId) : anchorRef.current;
     if (!el) return;
-    
+
     // We delay the very first position update slightly to ensure React has painted
     // the portal at the initial global last position, allowing the CSS transition to trigger.
     const flyTimer = setTimeout(() => {
-        const currentEl = targetId ? document.getElementById(targetId) : anchorRef.current;
-        if (!currentEl) return;
-        const rect = currentEl.getBoundingClientRect();
-        
-        // Exact element target position (center of the element)
-        const isInput = currentEl.tagName === 'INPUT' || currentEl.tagName === 'SELECT' || currentEl.tagName === 'TEXTAREA';
-        const targetX = rect.left + rect.width / 2;
-        const targetY = isInput ? rect.top + rect.height / 2 : rect.bottom + 12;
-        
-        const prevX = posRef.current.x;
-        const prevY = posRef.current.y;
-        
-        // Determine dynamic label based on element type
-        let dynamicLabel = "Nina";
-        if (currentEl) {
-            const tag = currentEl.tagName.toUpperCase();
-            const type = (currentEl as HTMLInputElement).type?.toLowerCase();
-            
-            if (tag === 'SELECT' || type === 'checkbox' || type === 'radio') {
-                dynamicLabel = "Selecting";
-            } else if (tag === 'INPUT' || tag === 'TEXTAREA') {
-                dynamicLabel = "Typing";
-            } else {
-                dynamicLabel = "Nina";
-            }
+      const currentEl = targetId ? document.getElementById(targetId) : anchorRef.current;
+      if (!currentEl) return;
+
+      // Exact element/text target position
+      const { x: targetX, y: targetY } = getTargetCoordinates(currentEl);
+
+      const prevX = posRef.current.x;
+      const prevY = posRef.current.y;
+
+      // Determine dynamic label based on element type
+      let dynamicLabel = "Cloey";
+      if (currentEl) {
+        const tag = currentEl.tagName.toUpperCase();
+        const type = (currentEl as HTMLInputElement).type?.toLowerCase();
+
+        if (tag === 'SELECT' || type === 'checkbox' || type === 'radio') {
+          dynamicLabel = "Selecting";
+        } else if (tag === 'INPUT' || tag === 'TEXTAREA') {
+          dynamicLabel = "Typing";
+          // } else if (tag === 'A' || tag === 'BUTTON' || currentEl.getAttribute('role') === 'button') {
+          //     dynamicLabel = "Navigating";
+        } else {
+          dynamicLabel = "Cloey";
         }
-        
-        setPos({ x: targetX, y: targetY, label: dynamicLabel });
-        setGlobalPos(targetX, targetY);
-        
-        if (!visible) setVisible(true);
-        
-        // Calculate travel distance to determine travel time (tvl)
-        const dist = Math.hypot(targetX - prevX, targetY - prevY);
-        const tvl = Math.max(0.45, Math.min(1.25, dist / 620));
-        
-        // Wait for cursor to physically arrive, THEN trigger thinking arc (yellow circle)
-        // just like the prototype!
-        clearTimeout(thinkTimer.current ?? undefined);
-        setThinkArc(prev => ({ ...prev, active: false }));
-        
-        // Always do the arrival effects when targeting a new field
-        thinkTimer.current = setTimeout(() => {
-            setThinkArc(prev => ({ active: true, durMs: 620, key: prev.key + 1 }));
-            
-            // Turn off yellow ring after 620ms
-            setTimeout(() => {
-                setThinkArc(prev => ({ ...prev, active: false }));
-                
-                // Play the click animation right after thinking finishes on every field!
-                playClickFxRef.current();
-            }, 620);
-            
-        }, Math.round(tvl * 1000 + 140));
-        
-        // Wind-up micro scale on new move arrival
-        setWind(false);
-        clearTimeout(windTimer.current ?? undefined);
-        windTimer.current = setTimeout(() => {
-            setWind(true);
-            clearTimeout(pressTimer.current ?? undefined);
-            pressTimer.current = setTimeout(() => setWind(false), 180);
-        }, 10);
-        
+      }
+
+      setPos({ x: targetX, y: targetY, label: dynamicLabel });
+      setGlobalPos(targetX, targetY);
+
+      if (!visible) setVisible(true);
+
+      // Calculate travel distance to determine travel time (tvl)
+      const dist = Math.hypot(targetX - prevX, targetY - prevY);
+      const tvl = Math.max(0.45, Math.min(1.25, dist / 620));
+
+      // Wait for cursor to physically arrive, THEN trigger thinking arc (yellow circle)
+      // just like the prototype!
+      clearTimeout(thinkTimer.current ?? undefined);
+      setThinkArc(prev => ({ ...prev, active: false }));
+
+      // Always do the arrival effects when targeting a new field
+      thinkTimer.current = setTimeout(() => {
+        setThinkArc(prev => ({ active: true, durMs: 620, key: prev.key + 1 }));
+
+        // Turn off yellow ring after 620ms
+        setTimeout(() => {
+          setThinkArc(prev => ({ ...prev, active: false }));
+
+          // Play the click animation right after thinking finishes on every field!
+          playClickFxRef.current();
+        }, 620);
+
+      }, Math.round(tvl * 1000 + 140));
+
+      // Wind-up micro scale on new move arrival
+      setWind(false);
+      clearTimeout(windTimer.current ?? undefined);
+      windTimer.current = setTimeout(() => {
+        setWind(true);
+        clearTimeout(pressTimer.current ?? undefined);
+        pressTimer.current = setTimeout(() => setWind(false), 180);
+      }, 10);
+
     }, 50); // 50ms delay to force CSS transition on mount
 
     window.addEventListener("resize", updatePosSilent);
-    window.addEventListener("scroll", updatePosSilent, true); 
-    
+    window.addEventListener("scroll", updatePosSilent, true);
+
     return () => {
       clearTimeout(flyTimer);
       window.removeEventListener("resize", updatePosSilent);

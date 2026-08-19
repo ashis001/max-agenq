@@ -113,6 +113,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         // Ensure workflow is terminated when chat is closed
         setIsWorkflowActive(false);
         setIsWorkflowPaused(false);
+        setActiveWorkflow(null);
     }, []);
 
     const clearExternalMessage = useCallback(() => setExternalMessage(null), []);

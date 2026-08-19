@@ -15,7 +15,6 @@ import {
     VolumeX,
     Pause,
     Play,
-    ArrowRight,
     Maximize2,
     MousePointer2,
     Paperclip,
@@ -40,6 +39,10 @@ import MaxGuidePointer from "@/components/MaxGuidePointer";
 import { fetchAllCorporates, deleteCorporate } from "@/lib/db";
 import { Corporate } from "@/lib/types";
 import { speakText, stopSpeech, setSpeakingRate, setSpeakStateHooks } from "@/lib/google-tts";
+import clsx from "clsx";
+import policyPlans from "@/lib/policy-plans.json";
+import policyPurchase from "@/lib/policy-purchase.json";
+import { MeetingReasonForm, CustomTimeInput } from "./MeetingWorkflow";
 import {
     setPlaybackSpeed,
     getPlaybackSpeed,
@@ -47,11 +50,7 @@ import {
     formatPlaybackSpeed,
     PlaybackSpeed,
 } from "@/lib/playback";
-import clsx from "clsx";
-import policyPlans from "@/lib/policy-plans.json";
-import policyPurchase from "@/lib/policy-purchase.json";
-import { MeetingReasonForm, CustomTimeInput } from "./MeetingWorkflow";
-import WorkflowCard, { WorkflowData } from "./WorkflowCard";
+import WorkflowCard from "./WorkflowCard";
 import {
     resetOnboardingGuide,
     pushOnboardingStep,
@@ -60,6 +59,14 @@ import {
     subscribeOnboardingGuide,
     ONBOARDING_TOTAL_STEPS,
 } from "@/lib/guide";
+import {
+    analyzeIntent,
+    isYesAnswer,
+    isNoAnswer,
+    CANONICAL_PHRASE,
+    type IntentId,
+    type IntentResult,
+} from "@/lib/intent-engine";
 
 interface PolicyPlan {
     plan_id: string;
@@ -112,7 +119,7 @@ export default function RightChatPanel() {
                             </div>
                             <div>
                                 <h4 className="text-[12px] font-bold text-slate-800">Connect OneDrive and Email</h4>
-                                <p className="text-[10px] text-slate-500 font-medium">Allow NINA to access customer-related folders and communications.</p>
+                                <p className="text-[10px] text-slate-500 font-medium">Allow Nina to access customer-related folders and communications.</p>
                             </div>
                         </div>
                         <button
@@ -317,17 +324,18 @@ export default function RightChatPanel() {
         isWorkflowPaused,
         setIsWorkflowPaused,
         isWorkflowActive,
-        setIsWorkflowActive,
-        activeWorkflow,
-        setActiveWorkflow,
-        setWorkflowStepIndex,
         isFloating,
         setIsFloating,
         isExpanded,
         setIsExpanded,
         setSubmittedClaimId,
         submittedClaimId,
+
         openChat,
+        setIsWorkflowActive,
+        activeWorkflow,
+        setActiveWorkflow,
+        setWorkflowStepIndex,
     } = useChat();
     const [history, setHistory] = useState<ChatSession[]>([]);
     const [inputValue, setInputValue] = useState("");
@@ -335,12 +343,11 @@ export default function RightChatPanel() {
     const [isListening, setIsListening] = useState(false);
     const [isVoiceMode, setIsVoiceMode] = useState(false); // Persistent voice mode
     const [pendingContext, setPendingContext] = useState<string | null>(null); // NEW: Track conversational state
+    const [pendingClarification, setPendingClarification] = useState<{ intent: IntentId; label: string } | null>(null); // NEW: Intent engine clarification (human-like disambiguation)
     const [NinaStep, setNinaStep] = useState<number>(0); // NEW: Track Nina Storyboard progress
     const [PurchaseStep, setPurchaseStep] = useState<number>(0); // NEW: Track Policy Purchase progress
     const [OnboardingStep, setOnboardingStep] = useState<number>(0); // NEW: Track Onboarding Storyboard progress
     const [meetingStep, setMeetingStep] = useState<number>(0); // NEW: Track Meeting booking progress
-    const [workflowElapsed, setWorkflowElapsed] = useState(0);
-    const workflowStartRef = useRef<number | null>(null);
     const [bookingName, setBookingName] = useState("");
     const [bookingSlot, setBookingSlot] = useState("");
     const [bookingEmail, setBookingEmail] = useState("");
@@ -369,6 +376,7 @@ export default function RightChatPanel() {
     const silenceTimerRef = useRef<NodeJS.Timeout | null>(null);
     const transcriptRef = useRef("");
     const isVoiceModeRef = useRef(false); // Using ref for immediate sync in callbacks
+    const stopRequestedRef = useRef(false); // True when we intentionally stop recognition (send/assistant pause)
     const isSpeakingRef = useRef(false);
     const isListeningRef = useRef(false);
     const [isTyping, setIsTyping] = useState(false);
@@ -398,9 +406,13 @@ export default function RightChatPanel() {
     const [isHeaderMenuOpen, setIsHeaderMenuOpen] = useState(false);
     const headerMenuRef = useRef<HTMLDivElement>(null);
 
-    // Playback speed (YouTube-style) for the onboarding walkthrough
-    const [speedSubmenuOpen, setSpeedSubmenuOpen] = useState(false);
+    // --- Workflow / playback UI state (Live Walkthrough card) ---
     const [selectedSpeed, setSelectedSpeed] = useState<PlaybackSpeed>(getPlaybackSpeed());
+    const [speedSubmenuOpen, setSpeedSubmenuOpen] = useState(false);
+    const [workflowElapsed, setWorkflowElapsed] = useState(0);
+    const workflowStartRef = useRef<number | null>(null);
+    const completionHandledRef = useRef(false);
+    const lastCompletedWorkflowTitle = useRef<string | null>(null);
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -422,26 +434,54 @@ export default function RightChatPanel() {
     }, [isMuted]);
 
     useEffect(() => {
-        if (isListening && !isMuted) {
-            if (!isVoiceMode) {
-                setIsVoiceMode(true);
-                isVoiceModeRef.current = true;
-            }
-        } else {
-            if (isVoiceMode) {
-                setIsVoiceMode(false);
-                isVoiceModeRef.current = false;
-            }
-        }
-    }, [isListening, isMuted, isVoiceMode]);
-
-    useEffect(() => {
         isSpeakingRef.current = isSpeaking;
     }, [isSpeaking]);
 
     useEffect(() => {
         isListeningRef.current = isListening;
     }, [isListening]);
+
+    // --- WORKFLOW: after the active workflow finishes, clear the card and post a closing chat message ---
+    useEffect(() => {
+        const completed = !!activeWorkflow?.isCompleted;
+        if (!completed) {
+            completionHandledRef.current = false;
+            return;
+        }
+        if (completionHandledRef.current) return;
+        completionHandledRef.current = true;
+        const t = setTimeout(() => {
+            openChat("Onboarding workflow completed successfully. Is there anything else I can help you with?");
+            setActiveWorkflow(null);
+        }, 4000);
+        return () => clearTimeout(t);
+    }, [activeWorkflow?.isCompleted, openChat, setActiveWorkflow]);
+
+    // --- WORKFLOW: keep the chat "Speaking" indicator in sync with global TTS (incl. workflow narration) ---
+    useEffect(() => {
+        setSpeakStateHooks(
+            () => { setIsSpeaking(true); isSpeakingRef.current = true; },
+            () => { setIsSpeaking(false); isSpeakingRef.current = false; }
+        );
+        return () => setSpeakStateHooks(null, null);
+    }, [setIsSpeaking]);
+
+    // --- WORKFLOW: elapsed timer shown next to the progress bar ---
+    useEffect(() => {
+        if (activeWorkflow && !activeWorkflow.isCompleted) {
+            if (workflowStartRef.current === null) {
+                workflowStartRef.current = Date.now();
+            }
+            const id = setInterval(() => {
+                if (workflowStartRef.current !== null) {
+                    setWorkflowElapsed(Math.floor((Date.now() - workflowStartRef.current) / 1000));
+                }
+            }, 1000);
+            return () => clearInterval(id);
+        }
+        workflowStartRef.current = null;
+        setWorkflowElapsed(0);
+    }, [activeWorkflow, activeWorkflow?.isCompleted]);
 
     // Synchronize active workflow step with live app guide progression
     useEffect(() => {
@@ -462,7 +502,7 @@ export default function RightChatPanel() {
                 }
             };
 
-                        if (activeWorkflow.title.includes("Corporate") || step?.includes("customer") || step?.includes("tier") || step?.includes("setup") || step?.includes("corp")) {
+            if (activeWorkflow.title.includes("Corporate") || step?.includes("customer") || step?.includes("tier") || step?.includes("setup") || step?.includes("corp")) {
                 let targetIndex = activeWorkflow.currentStepIndex;
                 if (!step || step === "sidebar_corporate" || step === "start" || step === "start_onboarding") targetIndex = 0;
                 else if (step === "add_customer") targetIndex = 1;
@@ -536,7 +576,7 @@ export default function RightChatPanel() {
 
     // Keep the onboarding WorkflowCard synced with the dynamic guide store.
     // Components push each spoken step into the store; this mirrors it into
-    // activeWorkflow so the table + dialog always reflect what Nina is saying.
+    // activeWorkflow so the table + dialog always reflect what the assistant is saying.
     useEffect(() => {
         const update = () => {
             const g = getOnboardingGuide();
@@ -554,35 +594,6 @@ export default function RightChatPanel() {
         const unsub = subscribeOnboardingGuide(update);
         return unsub;
     }, [setActiveWorkflow]);
-
-    // When the onboarding walkthrough completes, automatically dismiss the
-    // workflow card after a few seconds and post a closing message in the chat
-    // (outside the workflow table).
-    const completionHandledRef = useRef(false);
-    useEffect(() => {
-        const completed = !!activeWorkflow?.isCompleted;
-        if (!completed) {
-            completionHandledRef.current = false;
-            return;
-        }
-        if (completionHandledRef.current) return;
-        completionHandledRef.current = true;
-        const t = setTimeout(() => {
-            openChat("Onboarding workflow completed successfully. Is there anything else I can help you with?");
-            setActiveWorkflow(null);
-        }, 4000);
-        return () => clearTimeout(t);
-    }, [activeWorkflow?.isCompleted, openChat, setActiveWorkflow]);
-
-    // Reflect global speech state (including workflow narration) in the UI so
-    // the "Speaking" indicator lights up while Nina is actually talking.
-    useEffect(() => {
-        setSpeakStateHooks(
-            () => { setIsSpeaking(true); isSpeakingRef.current = true; },
-            () => { setIsSpeaking(false); isSpeakingRef.current = false; }
-        );
-        return () => setSpeakStateHooks(null, null);
-    }, [setIsSpeaking]);
 
     // Helper to check and request microphone permissions
     const checkMicrophonePermission = async (): Promise<boolean> => {
@@ -638,32 +649,65 @@ export default function RightChatPanel() {
 
                     if (silenceTimerRef.current) {
                         clearTimeout(silenceTimerRef.current);
+                        silenceTimerRef.current = null;
                     }
 
                     if (currentFullTranscript.trim()) {
                         setIsUserTranscribing(true);
                         silenceTimerRef.current = setTimeout(() => {
                             if (transcriptRef.current.trim()) {
+                                stopRequestedRef.current = true; // Pause mic until assistant finishes, then stream-complete restarts it
                                 handleSend(transcriptRef.current, "voice");
                                 transcriptRef.current = "";
                                 recognitionRef.current?.stop();
+                                silenceTimerRef.current = null;
                             }
                         }, 4000);
                     }
                 };
 
                 recognitionRef.current.onend = () => {
-                    setIsListening(false);
-                    isListeningRef.current = false;
-                    // If silenceTimerRef.current is still set, it means we stopped before the 2.5s timer fired
-                    // (e.g. manual stop or system timeout). In this case, we should send the transcript.
+                    // If voice mode was intentionally stopped (manual end, chat close, or pre-response pause),
+                    // do NOT auto-restart here.
+                    if (!isVoiceModeRef.current || stopRequestedRef.current) {
+                        stopRequestedRef.current = false;
+                        if (silenceTimerRef.current) {
+                            clearTimeout(silenceTimerRef.current);
+                            silenceTimerRef.current = null;
+                            if (transcriptRef.current.trim()) {
+                                handleSend(transcriptRef.current, "voice");
+                                transcriptRef.current = "";
+                            }
+                        }
+                        setIsListening(false);
+                        isListeningRef.current = false;
+                        return;
+                    }
+
+                    // Voice mode is still active but recognition ended on its own (Chrome ends "continuous"
+                    // recognition periodically / after silence). Send any pending transcript, then immediately
+                    // restart the mic so the call stays alive.
                     if (silenceTimerRef.current) {
                         clearTimeout(silenceTimerRef.current);
                         silenceTimerRef.current = null;
                         if (transcriptRef.current.trim()) {
+                            stopRequestedRef.current = true;
                             handleSend(transcriptRef.current, "voice");
                             transcriptRef.current = "";
+                            setIsListening(false);
+                            isListeningRef.current = false;
+                            return; // stream-complete will restart the mic after the response
                         }
+                    }
+
+                    try {
+                        transcriptRef.current = "";
+                        recognitionRef.current?.start();
+                        setIsListening(true);
+                        isListeningRef.current = true;
+                    } catch (e) {
+                        setIsListening(false);
+                        isListeningRef.current = false;
                     }
                 };
 
@@ -726,7 +770,7 @@ export default function RightChatPanel() {
             isVoiceModeRef.current = false;
             setIsUserTranscribing(false);
             if (muteSpeakerOnStop) {
-                setIsMuted(true);
+                // setIsMuted(true);
                 stopSpeech();
             }
         } else {
@@ -922,11 +966,17 @@ export default function RightChatPanel() {
         // Auto-reactivate mic if voice mode is active and not interrupted
         // Removed !isMuted check so voice input works even if assistant is quiet
         if (isVoiceModeRef.current && !isInterruptedRef.current) {
-            setTimeout(() => {
+            let attempts = 0;
+            const tryRestartMic = () => {
+                if (!isVoiceModeRef.current || isInterruptedRef.current) return;
+                if (isListeningRef.current) return;
+                // Wait for the assistant to finish speaking, then retry
+                if (isSpeakingRef.current && attempts < 40) {
+                    attempts++;
+                    setTimeout(tryRestartMic, 500);
+                    return;
+                }
                 try {
-                    // Prevent multiple starts - using refs to avoid stale state
-                    if (isListeningRef.current || isSpeakingRef.current) return;
-
                     transcriptRef.current = "";
                     setInputValue("");
                     recognitionRef.current?.start();
@@ -934,24 +984,14 @@ export default function RightChatPanel() {
                     isListeningRef.current = true;
                 } catch (err: any) {
                     console.error("Auto-mic start failed:", err);
-                    // Only retry if it's not a permission issue and was previously active
                     const isPermissionError = err.message?.includes('not-allowed') || err.name === 'NotAllowedError';
-                    if (isVoiceModeRef.current && !isPermissionError) {
-                        setTimeout(() => {
-                            try {
-                                if (!isListeningRef.current && !isSpeakingRef.current) {
-                                    recognitionRef.current?.start();
-                                    setIsListening(true);
-                                    isListeningRef.current = true;
-                                }
-                            } catch (e) {
-                                console.log("Retry also failed, keeping voice mode but mic inactive");
-                                // We don't force disable voice mode here to keep the UI state
-                            }
-                        }, 1500);
+                    if (isVoiceModeRef.current && !isPermissionError && attempts < 40) {
+                        attempts++;
+                        setTimeout(tryRestartMic, 800);
                     }
                 }
-            }, 1000); // Increased delay to 1000ms to allow audio device to fully release
+            };
+            setTimeout(tryRestartMic, 1000); // Increased delay to 1000ms to allow audio device to fully release
         }
         return activeStreamIdRef.current === id;
     };
@@ -974,7 +1014,7 @@ export default function RightChatPanel() {
             if (!isInterruptedRef.current) {
                 await streamMessage(secondMsg, "assistant");
                 // Automatically turn speaker OFF after default greeting message finishes speaking
-                if (!isInterruptedRef.current) setIsMuted(true);
+                // if (!isInterruptedRef.current) setIsMuted(true);
             }
             greetingTimeoutRef.current = null;
         }, 1000);
@@ -1056,7 +1096,7 @@ export default function RightChatPanel() {
 
                     // Automatically turn speaker OFF after load-time greeting/message finishes speaking
                     // Only apply this to the standard greeting to prevent muting workflow instructions
-                    if (isStandardGreeting && !isSilent && !isInterruptedRef.current) setIsMuted(true);
+                    // if (isStandardGreeting && !isSilent && !isInterruptedRef.current) setIsMuted(true);
 
                     clearExternalMessage();
                 }, 500);
@@ -1078,38 +1118,6 @@ export default function RightChatPanel() {
         }
     }, [externalMessage, isOpen, clearExternalMessage, isWorkflowActive]);
 
-    // Handle Workflow Completion Message
-    const lastCompletedWorkflowTitle = useRef<string | null>(null);
-    useEffect(() => {
-        if (activeWorkflow?.isCompleted && lastCompletedWorkflowTitle.current !== activeWorkflow.title) {
-            lastCompletedWorkflowTitle.current = activeWorkflow.title;
-            const timer = setTimeout(() => {
-                streamMessage("The workflow is completed! Let me know if you need anything else.", "assistant");
-            }, 1000);
-            return () => clearTimeout(timer);
-        }
-        if (!activeWorkflow) {
-            lastCompletedWorkflowTitle.current = null;
-        }
-    }, [activeWorkflow?.isCompleted, activeWorkflow?.title]);
-
-    // Workflow elapsed timer (shown next to the progress bar)
-    useEffect(() => {
-        if (activeWorkflow && !activeWorkflow.isCompleted) {
-            if (workflowStartRef.current === null) {
-                workflowStartRef.current = Date.now();
-            }
-            const id = setInterval(() => {
-                if (workflowStartRef.current !== null) {
-                    setWorkflowElapsed(Math.floor((Date.now() - workflowStartRef.current) / 1000));
-                }
-            }, 1000);
-            return () => clearInterval(id);
-        }
-        workflowStartRef.current = null;
-        setWorkflowElapsed(0);
-    }, [activeWorkflow, activeWorkflow?.isCompleted]);
-
 
     // Fix Hydration mismatch for time
     useEffect(() => {
@@ -1128,8 +1136,15 @@ export default function RightChatPanel() {
         );
     }, []);
 
+    const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+
     const scrollToBottom = () => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+        const el = scrollContainerRef.current;
+        if (el) {
+            el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+        } else {
+            messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+        }
     };
 
     const resetChat = () => {
@@ -1138,7 +1153,7 @@ export default function RightChatPanel() {
         setMessages([
             {
                 id: "1",
-                text: "Hi, I'm **Nina**. Your Assistant. I can help you with anything",
+                text: "Hi, I'm **NINA**. Your Assistant. I can help you with anything",
                 sender: "assistant",
                 timestamp: new Date().toLocaleTimeString([], {
                     hour: "2-digit",
@@ -1151,9 +1166,12 @@ export default function RightChatPanel() {
         setOnboardingStep(0);
         setMeetingStep(0);
         setPendingContext(null);
+        setPendingClarification(null);
         setInputValue("");
         setIsTyping(false);
         setIsUserTranscribing(false);
+        setIsWorkflowActive(false);
+        setActiveWorkflow(null);
         setInputMode("text");
 
         // Trigger the vocal greeting sequence
@@ -1219,7 +1237,7 @@ export default function RightChatPanel() {
             setIsVoiceMode(false);
             isVoiceModeRef.current = false;
             isSpeakingRef.current = false;
-            setIsMuted(true);
+            // setIsMuted(true);
             stopSpeech();
 
             if (silenceTimerRef.current) {
@@ -1233,6 +1251,7 @@ export default function RightChatPanel() {
             setOnboardingStep(0);
             setMeetingStep(0);
             setPendingContext(null);
+            setPendingClarification(null);
             setInputValue("");
             setIsTyping(false);
             setIsUserTranscribing(false);
@@ -1242,7 +1261,7 @@ export default function RightChatPanel() {
 
     useEffect(() => {
         scrollToBottom();
-    }, [messages, isTyping, isUserTranscribing]);
+    }, [messages, isTyping, isUserTranscribing, activeWorkflow?.currentStepIndex, activeWorkflow?.isCompleted, activeWorkflow?.steps.length]);
 
     const handleMouseMove = useCallback(
         (e: MouseEvent) => {
@@ -1432,6 +1451,32 @@ export default function RightChatPanel() {
             const corporates = await fetchAllCorporates();
             const query = textToSend.toLowerCase().trim();
 
+            // --- INTENT ENGINE: "think" about what the user actually means ---
+            // Handles misspellings ("unboard"), paraphrases ("how to create new
+            // customer") and, when unsure, returns a clarification so we can ask.
+            const engineResult: IntentResult = analyzeIntent(query);
+
+            // --- INTENT ENGINE: handle a reply to a previous clarification ---
+            // If we asked "Did you mean you want to onboard a customer?" earlier,
+            // the user's yes/no here resolves it like a human conversation would.
+            if (pendingClarification && meetingStep === 0 && NinaStep === 0 && PurchaseStep === 0 && OnboardingStep === 0) {
+                const pc = pendingClarification;
+                setPendingClarification(null);
+                if (isYesAnswer(query)) {
+                    setIsTyping(false);
+                    // Re-run the handler with the canonical phrase so the normal
+                    // workflow code executes unchanged.
+                    handleSend(CANONICAL_PHRASE[pc.intent], "text");
+                    return;
+                } else if (isNoAnswer(query)) {
+                    setIsTyping(false);
+                    await streamMessage("No problem! Let me know what you'd like to do and I'll help you with it.", "assistant");
+                    return;
+                }
+                // If it was neither yes nor no, fall through so the engine can
+                // re-evaluate this new message normally.
+            }
+
             // --- STORYBOARD: Claude Meeting Booking Workflow ---
             const meetingTriggers = [
                 "talk to real person",
@@ -1444,7 +1489,8 @@ export default function RightChatPanel() {
                 "speak to a person",
                 "agent"
             ];
-            const isMeetingTrigger = meetingTriggers.some(keyword => query.includes(keyword));
+            const isMeetingTrigger = meetingTriggers.some(keyword => query.includes(keyword)) ||
+                (engineResult.decision === "route" && engineResult.intent === "talk_to_human");
 
             if (meetingStep > 0) {
                 if (meetingStep === 1) { // Yes / No choice
@@ -1562,7 +1608,7 @@ export default function RightChatPanel() {
                 "i want to claim",
                 "claim"
             ];
-            if (query.includes("claim") || query.includes("can you help me wiht that")) {
+            if (query.includes("claim") || query.includes("can you help me wiht that") || (engineResult.decision === "route" && engineResult.intent === "file_claim")) {
                 setNinaStep(1);
                 setPurchaseStep(0); // Ensure other workflows are closed
                 setIsTyping(false);
@@ -1572,7 +1618,8 @@ export default function RightChatPanel() {
 
             // --- TRIGGER: Nina PURCHASE FLOW ---
             const purchaseKeywords = policyPurchase.prompts.trigger_keywords;
-            const isPurchaseQuery = purchaseKeywords.some((keyword: string) => query.includes(keyword));
+            const isPurchaseQuery = purchaseKeywords.some((keyword: string) => query.includes(keyword)) ||
+                (engineResult.decision === "route" && engineResult.intent === "buy_policy");
             if (isPurchaseQuery) {
                 setPurchaseStep(1);
                 setNinaStep(0); // Ensure other workflows are closed
@@ -1873,7 +1920,8 @@ export default function RightChatPanel() {
 
             const isClaimQuery =
                 query.includes("claim") &&
-                (query.includes("how to") || query.includes("insurance") || query.includes("policy") || query.includes("medical"));
+                (query.includes("how to") || query.includes("insurance") || query.includes("policy") || query.includes("medical")) ||
+                (engineResult.decision === "route" && engineResult.intent === "file_claim");
 
             if (isClaimQuery) {
                 if (isInterruptedRef.current) return;
@@ -1897,11 +1945,12 @@ export default function RightChatPanel() {
             // --- POLICY COMPARISON LOGIC ---
             const comparisonKeywords = policyPlans.prompts.comparison_keywords;
             const isPolicyComparisonQuery = comparisonKeywords.some((keyword: string) => query.includes(keyword)) ||
-                (query.includes("policy") && (query.includes("compare") || query.includes("plans") || query.includes("bronze") || query.includes("silver") || query.includes("gold")));
+                (query.includes("policy") && (query.includes("compare") || query.includes("plans") || query.includes("bronze") || query.includes("silver") || query.includes("gold"))) ||
+                (engineResult.decision === "route" && engineResult.intent === "compare_plans");
 
             const isSinglePlanQuery = (Object.keys(policyPlans.prompts.plan_specific) as (keyof typeof policyPlans.prompts.plan_specific)[]).some((plan) =>
                 policyPlans.prompts.plan_specific[plan].some((keyword: string) => query.includes(keyword))
-            );
+            ) || (engineResult.decision === "route" && engineResult.intent === "plan_details");
 
             if (isPolicyComparisonQuery) {
                 if (isInterruptedRef.current) return;
@@ -2050,7 +2099,7 @@ export default function RightChatPanel() {
                 }
             }
 
-            if (query.includes("recommend") || query.includes("which plan") || query.includes("what plan") || query.includes("choose")) {
+            if (query.includes("recommend") || query.includes("which plan") || query.includes("what plan") || query.includes("choose") || (engineResult.decision === "route" && engineResult.intent === "recommend_plan")) {
                 if (isInterruptedRef.current) return;
                 setIsTyping(false);
 
@@ -2121,7 +2170,7 @@ export default function RightChatPanel() {
                 return;
             }
 
-            if (query.includes("sold a new group insurance deal") || query.includes("northbridge") || (query.includes("set up") && query.includes("customer onboarding")) || query.includes("onboarding_query") || query.includes("onboarding") || query.includes("onboard")) {
+            if (query.includes("sold a new group insurance deal") || query.includes("northbridge") || (query.includes("set up") && query.includes("customer onboarding")) || query.includes("onboarding_query") || query.includes("onboarding") || query.includes("onboard") || (engineResult.decision === "route" && engineResult.intent === "onboard_customer")) {
                 if (isInterruptedRef.current) return;
                 setIsTyping(false);
                 const combinedIntro = "Got it. We can do these 2 ways.\n\n**Training Mode**: I walk you through each step, by using sample data.\n\n**Execution Mode**: I will complete the setup with actual data on your behalf, and then you just need to review it before submission.";
@@ -2137,6 +2186,29 @@ export default function RightChatPanel() {
                     { label: "Training Mode (Sample Data)", value: "sample" },
                     { label: "Execution Mode (Real Data)", value: "real" },
                 ]);
+                return;
+            }
+
+            if (OnboardingStep === 1) {
+                setOnboardingStep(2);
+                setIsTyping(false);
+                await streamMessage(`Got it. Started onboarding.`, "assistant");
+
+                setIsTyping(true);
+                await new Promise(r => setTimeout(r, 800));
+                setIsTyping(false);
+
+                setStatusIndicator({ text: "Reading company profile", emoji: "📄" });
+                await new Promise(r => setTimeout(r, 1500));
+
+                setStatusIndicator({ text: "Processing company details", emoji: "📄" });
+                await new Promise(r => setTimeout(r, 1500));
+
+                setStatusIndicator({ text: "Searching OneDrive for Northbridge Manufacturing Ltd.", emoji: "🔍" });
+                await new Promise(r => setTimeout(r, 2500));
+
+                setStatusIndicator(null); // Hide before next message
+                await streamMessage("I found additional data in OneDrive and recent emails. I need your permission to access it.\n\n[AUTHORIZE_BUTTON]", "assistant");
                 return;
             }
 
@@ -2280,6 +2352,25 @@ export default function RightChatPanel() {
                     await streamMessage("Northbridge Manufacturing Ltd. has been submitted for onboarding.\n\nI also created an audit summary showing:\n• Which fields were extracted from documents\n• Which fields you provided manually\n• Which documents were used\n• Submission time and workflow status", "assistant");
                     return;
                 }
+            }
+
+            // --- INTENT ENGINE: human-like clarification ---
+            // We recognised the request but aren't fully sure (e.g. a misspelling
+            // like "unboard a customer"). Ask the user to confirm, exactly as a
+            // person would, before launching the workflow. This runs only after no
+            // other workflow or knowledge-base branch above has matched.
+            if (engineResult.decision === "clarify" && engineResult.label) {
+                setIsTyping(false);
+                await streamMessage(
+                    `Just to be sure — did you mean you want to **${engineResult.label}**? I can walk you through it.`,
+                    "assistant",
+                    [
+                        { label: "Yes", value: "clarify_yes" },
+                        { label: "No", value: "clarify_no" },
+                    ],
+                );
+                setPendingClarification({ intent: engineResult.intent as IntentId, label: engineResult.label });
+                return;
             }
 
             if (
@@ -2554,10 +2645,12 @@ export default function RightChatPanel() {
                                         setInputValue("");
                                         setIsTyping(false);
                                         setIsUserTranscribing(false);
+                                        setIsWorkflowActive(false);
+                                        setActiveWorkflow(null);
                                         hasTriggeredGreetingRef.current = false;
                                         setIsHeaderMenuOpen(false);
                                     }}
-                                    className="w-full text-left px-3 py-2 text-xs text-red-600 hover:bg-red-50 font-bold transition-colors flex items-center gap-2 border-b border-slate-100"
+                                    className="w-full text-left px-3 py-2 text-xs text-red-600 hover:bg-red-50 transition-colors flex items-center gap-2 border-b border-slate-100"
                                 >
                                     <Trash2 size={14} className="text-red-500" />
                                     <span>Clear</span>
@@ -2568,7 +2661,7 @@ export default function RightChatPanel() {
                                         setIsHeaderMenuOpen(false);
                                         fileInputRef.current?.click();
                                     }}
-                                    className="w-full text-left px-3 py-2 text-xs text-slate-600 hover:bg-slate-50 font-bold transition-colors flex items-center gap-2"
+                                    className="w-full text-left px-3 py-2 text-xs text-slate-600 hover:bg-slate-50 transition-colors flex items-center gap-2"
                                 >
                                     <Paperclip size={14} className="text-slate-400" />
                                     <span>Upload</span>
@@ -2577,13 +2670,13 @@ export default function RightChatPanel() {
                                     <button
                                         type="button"
                                         onClick={() => setSpeedSubmenuOpen(!speedSubmenuOpen)}
-                                        className="w-full text-left px-3 py-2 text-xs text-slate-600 hover:bg-slate-50 font-bold transition-colors flex items-center justify-between gap-2"
+                                        className="w-full text-left px-3 py-2 text-xs text-slate-600 hover:bg-slate-50 transition-colors flex items-center justify-between gap-2"
                                     >
                                         <span className="flex items-center gap-2">
                                             <Gauge size={14} className="text-slate-400" />
                                             <span>Playback Speed</span>
                                         </span>
-                                        <span className="text-[10px] text-slate-400">{formatPlaybackSpeed(selectedSpeed)}</span>
+                                        <span className="text-[10px] text-slate-400">{`${selectedSpeed}x`}</span>
                                     </button>
                                     {speedSubmenuOpen && (
                                         <div className="absolute right-full top-0 mr-1 w-36 bg-white border border-slate-200 rounded-xl shadow-lg py-1 z-[110] animate-fade-in">
@@ -2601,12 +2694,12 @@ export default function RightChatPanel() {
                                                     className={clsx(
                                                         "w-full text-left px-3 py-1.5 text-xs transition-colors flex items-center justify-between",
                                                         s === selectedSpeed
-                                                            ? "bg-purple-50 text-[#6d28ff] font-bold"
+                                                            ? "bg-[#1e3a5f]/10 text-[#1e3a5f] font-bold"
                                                             : "text-slate-600 hover:bg-slate-50"
                                                     )}
                                                 >
                                                     <span>{formatPlaybackSpeed(s)}</span>
-                                                    {s === selectedSpeed && <Check size={13} className="text-[#6d28ff]" />}
+                                                    {s === selectedSpeed && <Check size={13} className="text-[#1e3a5f]" />}
                                                 </button>
                                             ))}
                                         </div>
@@ -2752,338 +2845,320 @@ export default function RightChatPanel() {
                         </button>
                     </div>
 
-                    <div className='flex-1 overflow-y-auto p-4 pb-6 space-y-2.5 custom-scrollbar'>
-                        {messages.map((msg) => (
-                            <div
-                                key={msg.id}
-                                className={clsx(
-                                    "flex flex-col gap-0.5",
-                                    msg.sender === "user"
-                                        ? "items-end ml-auto max-w-[85%]"
-                                        : msg.customType === "workflow-card"
-                                            ? "w-full"
-                                            : "max-w-[85%]",
-                                )}>
-                                {/* Label above user message bubble (Voice indication) */}
-                                {msg.sender === "user" && msg.inputType === "voice" && (
-                                    <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 select-none mr-1.5">
-                                        <Mic size={11} className="text-slate-400" />
-                                        <span>Voice</span>
-                                    </div>
-                                )}
-
-                                {/* Label above assistant message bubble (Spoken indication) */}
-                                {msg.sender === "assistant" && msg.wasSpoken && (
-                                    <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 select-none ml-1.5">
-                                        <Volume2 size={11} className="text-slate-400" />
-                                        <span>Spoken</span>
-                                    </div>
-                                )}
-
+                    <div className='flex-1 min-h-0 flex flex-col'>
+                        {/* Scrollable message list with bottom breathing room */}
+                        <div ref={scrollContainerRef} className='flex-1 overflow-y-auto p-4 pb-6 space-y-2.5 custom-scrollbar'>
+                            {messages.map((msg) => (
                                 <div
+                                    key={msg.id}
                                     className={clsx(
-                                        "py-2 text-[13.5px] leading-relaxed transition-all duration-300",
+                                        "flex flex-col gap-0.5",
                                         msg.sender === "user"
-                                            ? "bg-[#1e3a5f] text-white rounded-xl rounded-tr-none shadow-lg border border-[#1e3a5f]/10"
-                                            : "text-slate-700 font-medium",
-                                        msg.text.includes('|') ? "whitespace-normal min-w-full" : "whitespace-pre-wrap",
-                                        msg.customType === "workflow-card" ? "pl-3.5 pr-0 w-full" : "px-3.5"
+                                            ? "items-end ml-auto max-w-[85%]"
+                                            : msg.customType === "workflow-card"
+                                                ? "w-full"
+                                                : "max-w-[85%]",
                                     )}>
-                                    {renderMessageText(msg.text, msg.sender)}
-
-                                    {msg.customType === "meeting-reason" && (
-                                        <MeetingReasonForm
-                                            onSubmit={(reason) => {
-                                                handleSend(reason ? `No, reason: ${reason}` : "No");
-                                            }}
-                                            onSkip={() => {
-                                                handleSend("No");
-                                            }}
-                                        />
+                                    {/* Label above user message bubble (Voice indication) */}
+                                    {msg.sender === "user" && msg.inputType === "voice" && (
+                                        <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 select-none mr-1.5">
+                                            <Mic size={11} className="text-slate-400" />
+                                            <span>Voice</span>
+                                        </div>
                                     )}
 
-                                    {msg.customType === "custom-time-input" && (
-                                        <CustomTimeInput
-                                            onConfirm={(time) => {
-                                                handleSend(time);
-                                            }}
-                                        />
+                                    {/* Label above assistant message bubble (Spoken indication) */}
+                                    {msg.sender === "assistant" && msg.wasSpoken && (
+                                        <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 select-none ml-1.5">
+                                            <Volume2 size={11} className="text-slate-400" />
+                                            <span>Spoken</span>
+                                        </div>
                                     )}
 
-                                    {msg.customType === "workflow-card" && activeWorkflow && (
-                                        <WorkflowCard
-                                            workflow={activeWorkflow}
-                                            currentStepIndex={activeWorkflow.currentStepIndex}
-                                            isCompleted={activeWorkflow.isCompleted}
-                                        />
-                                    )}
+                                    <div
+                                        className={clsx(
+                                            "py-2 px-3.5 text-[13.5px] leading-relaxed transition-all duration-300",
+                                            msg.sender === "user"
+                                                ? "bg-[#1e3a5f] text-white rounded-xl rounded-tr-none shadow-lg border border-[#1e3a5f]/10"
+                                                : "text-slate-700 font-medium",
+                                            msg.text.includes('|') ? "whitespace-normal min-w-full" : "whitespace-pre-wrap",
+                                            msg.customType === "workflow-card" ? "pl-3.5 pr-0 w-full" : "px-3.5"
+                                        )}>
+                                        {renderMessageText(msg.text, msg.sender)}
 
-                                    {/* Action Buttons */}
-                                    {msg.actions && (
-                                        <div className='mt-4 flex flex-col items-start gap-2 w-full max-w-[320px]'>
-                                            {msg.actions.map((action, idx) => (
-                                                <button
-                                                    key={idx}
-                                                    onClick={async (e) => {
-                                                        e.preventDefault();
-                                                        e.stopPropagation();
-                                                        // Clear pending context immediately
-                                                        setPendingContext(null);
+                                        {msg.customType === "meeting-reason" && (
+                                            <MeetingReasonForm
+                                                onSubmit={(reason) => {
+                                                    handleSend(reason ? `No, reason: ${reason}` : "No");
+                                                }}
+                                                onSkip={() => {
+                                                    handleSend("No");
+                                                }}
+                                            />
+                                        )}
 
-                                                        if (action.value === "real") {
-                                                            handleSend("Execution Mode (Real Data)");
-                                                        } else if (action.value === "sample") {
-                                                            isInterruptedRef.current = true;
-                                                            stopSpeech();
-                                                            setIsMuted(false);
-                                                            isMutedRef.current = false;
-                                                            
-                                                            const userMsg: Message = {
-                                                                id: Date.now().toString(),
-                                                                text: "Training Mode (Sample Data)",
-                                                                sender: "user",
-                                                                timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-                                                                inputType: "text"
-                                                            };
-                                                            const workflowMsg: Message = {
-                                                                id: Date.now().toString() + "_wf",
-                                                                text: "",
-                                                                sender: "assistant",
-                                                                timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-                                                                customType: "workflow-card"
-                                                            };
-                                                            setMessages(prev => [...prev, userMsg, workflowMsg]);
+                                        {msg.customType === "custom-time-input" && (
+                                            <CustomTimeInput
+                                                onConfirm={(time) => {
+                                                    handleSend(time);
+                                                }}
+                                            />
+                                        )}
 
-                                                            // Reset guide state in localStorage to prevent leftover steps from prior runs
-                                                            localStorage.setItem("max_guide_step", "sidebar_corporate");
-                                                            setWorkflowStepIndex(0);
+                                        {msg.customType === "workflow-card" && activeWorkflow && (
+                                            <WorkflowCard
+                                                workflow={activeWorkflow}
+                                                currentStepIndex={activeWorkflow.currentStepIndex}
+                                                isCompleted={activeWorkflow.isCompleted}
+                                            />
+                                        )}
 
-                                                            // Start Live Workflow Card in Right Panel
-                                                            setIsWorkflowActive(true);
-                                                            resetOnboardingGuide("Corporate Customer Onboarding");
-                                                            planWorkflowSteps(ONBOARDING_TOTAL_STEPS);
-                                                            pushOnboardingStep(
-                                                                "I'm starting the Corporate Customer Onboarding workflow for the new corporate customer.",
-                                                                "Navigate",
-                                                                "Starting Corporate Customer Onboarding"
-                                                            );
-                                                            setActiveWorkflow({
-                                                                title: "Corporate Customer Onboarding",
-                                                                currentStepIndex: 0,
-                                                                steps: getOnboardingGuide().steps,
-                                                                totalSteps: getOnboardingGuide().totalSteps
-                                                            });
-                                                            
-                                                            // Interactive Guide Logic
-                                                            const navItem = document.getElementById("nav-item-corporate-customers");
-                                                            if (navItem) {
-                                                                // 1. Speak & Show Message (cursor flies immediately, speech always completes first)
-                                                                setGuideTargetId("nav-item-corporate-customers");
-                                                                await streamMessage("Please select the Corporate Customer tab on the sidebar.", "assistant", undefined, false, undefined, true);
+                                        {/* Action Buttons */}
+                                        {msg.actions && (
+                                            <div className='mt-4 flex flex-col items-start gap-2 w-full max-w-[320px]'>
+                                                {msg.actions.map((action, idx) => (
+                                                    <button
+                                                        key={idx}
+                                                        onClick={async (e) => {
+                                                            e.preventDefault();
+                                                            e.stopPropagation();
+                                                            // Clear pending context immediately
+                                                            setPendingContext(null);
+
+                                                            if (action.value === "real") {
+                                                                handleSend("Execution Mode (Real Data)");
+                                                            } else if (action.value === "sample") {
                                                                 isInterruptedRef.current = true;
-                                                                setGuideTargetId(null);
-                                                                await new Promise((r) => setTimeout(r, 1500));
+                                                                stopSpeech();
+                                                                setIsMuted(false);
+                                                                isMutedRef.current = false;
 
-                                                                localStorage.setItem("max_guide_step", "add_customer");
-                                                                router.push("/corporate-customers");
-                                                            } else {
-                                                                // Fallback
-                                                                localStorage.setItem("max_guide_step", "add_customer");
-                                                                router.push("/corporate-customers");
-                                                            }
-                                                        } else if (action.value === "sample_claim") {
-                                                            isInterruptedRef.current = true;
-                                                            stopSpeech();
-                                                            setIsMuted(false);
-                                                            isMutedRef.current = false;
-                                                            
-                                                            const userMsg: Message = {
-                                                                id: Date.now().toString(),
-                                                                text: "Training Mode (Sample Data)",
-                                                                sender: "user",
-                                                                timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-                                                                inputType: "text"
-                                                            };
-                                                            const workflowMsg: Message = {
-                                                                id: Date.now().toString() + "_wf",
-                                                                text: "",
-                                                                sender: "assistant",
-                                                                timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-                                                                customType: "workflow-card"
-                                                            };
-                                                            setMessages(prev => [...prev, userMsg, workflowMsg]);
+                                                                const userMsg: Message = {
+                                                                    id: Date.now().toString(),
+                                                                    text: "Training Mode (Sample Data)",
+                                                                    sender: "user",
+                                                                    timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+                                                                    inputType: "text"
+                                                                };
+                                                                const workflowMsg: Message = {
+                                                                    id: Date.now().toString() + "_wf",
+                                                                    text: "",
+                                                                    sender: "assistant",
+                                                                    timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+                                                                    customType: "workflow-card"
+                                                                };
+                                                                setMessages(prev => [...prev, userMsg, workflowMsg]);
 
-                                                            // Reset guide state in localStorage to prevent leftover steps from prior runs
-                                                            localStorage.setItem("max_guide_step", "claim_insurance");
-                                                            setWorkflowStepIndex(0);
+                                                                // Reset guide state in localStorage to prevent leftover steps from prior runs
+                                                                localStorage.setItem("max_guide_step", "sidebar_corporate");
+                                                                setWorkflowStepIndex(0);
 
-                                                            // Start Live Workflow Card for Claims in Right Panel
-                                                            setIsWorkflowActive(true);
-                                                            setActiveWorkflow({
-                                                                title: "Sample Claim Submission",
-                                                                currentStepIndex: 0,
-                                                                steps: [
-                                                                    {
-                                                                        t: "I’m opening the <b>Claims</b> section.",
-                                                                        e: "Access the claims management portal to review and file claims.",
-                                                                        x: "Claims"
-                                                                    },
-                                                                    {
-                                                                        t: "I’m verifying the account under <b>Jon Mercer (ID: 2026AB)</b>.",
-                                                                        e: "Matches the claimant with active member policies.",
-                                                                        x: "Jon Mercer (2026AB)"
-                                                                    },
-                                                                    {
-                                                                        t: "I’m selecting the <b>Health Insurance</b> policy.",
-                                                                        e: "Directs the dental expense to the health benefit plan.",
-                                                                        x: "Health Policy"
-                                                                    },
-                                                                    {
-                                                                        t: "I’m uploading and extracting the <b>Dental Bill ($190)</b>.",
-                                                                        e: "Scans clinic name, date of service, and total amount.",
-                                                                        x: "Bright Clove Dental ($190)"
-                                                                    },
-                                                                    {
-                                                                        t: "I’m checking coverage limits under <b>Silver Plan</b>.",
-                                                                        e: "Verifies eligibility against the $200 dental annual limit.",
-                                                                        x: "Fully Eligible"
-                                                                    },
-                                                                    {
-                                                                        t: "I’m submitting the claim — <b>Claim ID: CLM-10234</b>.",
-                                                                        e: "Dispatches claim confirmation and notifies the member via email.",
-                                                                        x: "CLM-10234"
-                                                                    }
-                                                                ]
-                                                            });
-                                                            
-                                                            // Interactive Guide Logic for Claims
-                                                            const navItem = document.getElementById("nav-item-claims");
-                                                            if (navItem) {
-                                                                // 1. Speak & Show Message (cursor flies immediately, speech always completes first)
-                                                                setGuideTargetId("nav-item-claims");
-                                                                await streamMessage("Please select the Claims tab in the sidebar.", "assistant", undefined, false, undefined, true);
-                                                                isInterruptedRef.current = true; // Keep mic off until the guide sequence finishes so it can't cut the next sentence
-                                                                setGuideTargetId(null);
-                                                                await new Promise((r) => setTimeout(r, 1000));
+                                                                // Start Live Workflow Card in Right Panel
+                                                                setIsWorkflowActive(true);
+                                                                resetOnboardingGuide("Corporate Customer Onboarding");
+                                                                planWorkflowSteps(ONBOARDING_TOTAL_STEPS);
+                                                                pushOnboardingStep(
+                                                                    "I'm starting the Corporate Customer Onboarding workflow for the new corporate customer.",
+                                                                    "Navigate",
+                                                                    "Starting Corporate Customer Onboarding"
+                                                                );
+                                                                setActiveWorkflow({
+                                                                    title: "Corporate Customer Onboarding",
+                                                                    currentStepIndex: 0,
+                                                                    steps: getOnboardingGuide().steps,
+                                                                    totalSteps: getOnboardingGuide().totalSteps
+                                                                });
 
-                                                                // 2. Speak the next part fully, then navigate
-                                                                await streamMessage("Let's file a sample claim to show you how it works.", "assistant", undefined, false, undefined, true);
+                                                                // Interactive Guide Logic
+                                                                const navItem = document.getElementById("nav-item-corporate-customers");
+                                                                if (navItem) {
+                                                                    // 1. Speak & Show Message (cursor flies immediately, speech always completes first)
+                                                                    setGuideTargetId("nav-item-corporate-customers");
+                                                                    await streamMessage("Please select the Corporate Customer tab on the sidebar.", "assistant", undefined, false, undefined, true);
+                                                                    isInterruptedRef.current = true;
+                                                                    setGuideTargetId(null);
+                                                                    await new Promise((r) => setTimeout(r, 1500));
+
+                                                                    localStorage.setItem("max_guide_step", "add_customer");
+                                                                    router.push("/corporate-customers");
+                                                                } else {
+                                                                    // Fallback
+                                                                    localStorage.setItem("max_guide_step", "add_customer");
+                                                                    router.push("/corporate-customers");
+                                                                }
+                                                            } else if (action.value === "sample_claim") {
+                                                                isInterruptedRef.current = true;
+                                                                stopSpeech();
+                                                                setIsMuted(false);
+                                                                isMutedRef.current = false;
+
+                                                                const userMsg: Message = {
+                                                                    id: Date.now().toString(),
+                                                                    text: "Training Mode (Sample Data)",
+                                                                    sender: "user",
+                                                                    timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+                                                                    inputType: "text"
+                                                                };
+                                                                const workflowMsg: Message = {
+                                                                    id: Date.now().toString() + "_wf",
+                                                                    text: "",
+                                                                    sender: "assistant",
+                                                                    timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+                                                                    customType: "workflow-card"
+                                                                };
+                                                                setMessages(prev => [...prev, userMsg, workflowMsg]);
+
+                                                                // Reset guide state in localStorage to prevent leftover steps from prior runs
                                                                 localStorage.setItem("max_guide_step", "claim_insurance");
+                                                                setWorkflowStepIndex(0);
+
+                                                                // Start Live Workflow Card for Claims in Right Panel
+                                                                setIsWorkflowActive(true);
+                                                                setActiveWorkflow({
+                                                                    title: "Sample Claim Submission",
+                                                                    currentStepIndex: 0,
+                                                                    steps: [
+                                                                        { t: "I’m opening the <b>Claims</b> section.", e: "Access the claims management portal to review and file claims.", x: "Claims" },
+                                                                        { t: "I’m verifying the account under <b>Jon Mercer (ID: 2026AB)</b>.", e: "Matches the claimant with active member policies.", x: "Jon Mercer (2026AB)" },
+                                                                        { t: "I’m selecting the <b>Health Insurance</b> policy.", e: "Directs the dental expense to the health benefit plan.", x: "Health Policy" },
+                                                                        { t: "I’m uploading and extracting the <b>Dental Bill ($190)</b>.", e: "Scans clinic name, date of service, and total amount.", x: "Bright Clove Dental ($190)" },
+                                                                        { t: "I’m checking coverage limits under <b>Silver Plan</b>.", e: "Verifies eligibility against the $200 dental annual limit.", x: "Fully Eligible" },
+                                                                        { t: "I’m submitting the claim — <b>Claim ID: CLM-10234</b>.", e: "Dispatches claim confirmation and notifies the member via email.", x: "CLM-10234" }
+                                                                    ]
+                                                                });
+
+                                                                // Interactive Guide Logic for Claims
+                                                                const navItem = document.getElementById("nav-item-claims");
+                                                                if (navItem) {
+                                                                    // 1. Speak & Show Message (cursor flies immediately, speech always completes first)
+                                                                    setGuideTargetId("nav-item-claims");
+                                                                    await streamMessage("Please select the Claims tab in the sidebar.", "assistant", undefined, false, undefined, true);
+                                                                    isInterruptedRef.current = true; // Keep mic off until the guide sequence finishes so it can't cut the next sentence
+                                                                    setGuideTargetId(null);
+                                                                    await new Promise((r) => setTimeout(r, 1000));
+
+                                                                    // 2. Speak the next part fully, then navigate
+                                                                    await streamMessage("Let's file a sample claim to show you how it works.", "assistant", undefined, false, undefined, true);
+                                                                    localStorage.setItem("max_guide_step", "claim_insurance");
+                                                                    router.push("/claims");
+                                                                } else {
+                                                                    // Fallback
+                                                                    localStorage.setItem("max_guide_step", "claim_insurance");
+                                                                    router.push("/claims");
+                                                                }
+                                                            } else if (action.value === "real_claim") {
                                                                 router.push("/claims");
+                                                            } else if (action.value === "navigate_claims") {
+                                                                router.push("/claims");
+                                                            } else if (action.value === "bronze_plan") {
+                                                                router.push("/plans");
+                                                            } else if (action.value === "silver_plan") {
+                                                                router.push("/plans");
+                                                            } else if (action.value === "gold_plan") {
+                                                                router.push("/plans");
+                                                            } else if (action.value === "compare_plans") {
+                                                                router.push("/plans");
+                                                            } else if (action.value === "recommend_plan") {
+                                                                router.push("/plans");
+                                                            } else if (action.value === "get_quote") {
+                                                                handleSend("I want to get a quote");
+                                                            } else if (action.value.startsWith("recommend_")) {
+                                                                handleSend(action.value);
                                                             } else {
-                                                                // Fallback
-                                                                localStorage.setItem("max_guide_step", "claim_insurance");
-                                                                router.push("/claims");
+                                                                handleSend(action.label);
                                                             }
-                                                        } else if (action.value === "real_claim") {
-                                                            router.push("/claims");
-                                                        } else if (action.value === "navigate_claims") {
-                                                            router.push("/claims");
-                                                        } else if (action.value === "bronze_plan") {
-                                                            router.push("/plans");
-                                                        } else if (action.value === "silver_plan") {
-                                                            router.push("/plans");
-                                                        } else if (action.value === "gold_plan") {
-                                                            router.push("/plans");
-                                                        } else if (action.value === "compare_plans") {
-                                                            router.push("/plans");
-                                                        } else if (action.value === "recommend_plan") {
-                                                            router.push("/plans");
-                                                        } else if (action.value === "get_quote") {
-                                                            handleSend("I want to get a quote");
-                                                        } else if (action.value.startsWith("recommend_")) {
-                                                            handleSend(action.value);
-                                                        } else {
-                                                            handleSend(action.label);
-                                                        }
-                                                    }}
-                                                    className='w-full py-2.5 px-4 bg-white border border-slate-200 rounded-xl text-[12px] font-bold text-[#1e3a5f] hover:bg-blue-50 hover:border-blue-300 transition-all text-left flex items-center justify-between group shadow-sm'>
-                                                    {action.label}
-                                                    <div className='w-5.5 h-5.5 rounded-full bg-white border border-slate-200 flex items-center justify-center group-hover:border-blue-400 group-hover:bg-blue-600 group-hover:text-white transition-all shadow-sm'>
-                                                        →
-                                                    </div>
-                                                </button>
-                                            ))}
+                                                        }}
+                                                        className='w-full py-2.5 px-4 bg-white border border-slate-200 rounded-xl text-[12px] font-bold text-[#1e3a5f] hover:bg-blue-50 hover:border-blue-300 transition-all text-left flex items-center justify-between group shadow-sm'>
+                                                        {action.label}
+                                                        <div className='w-5.5 h-5.5 rounded-full bg-white border border-slate-200 flex items-center justify-center group-hover:border-blue-400 group-hover:bg-blue-600 group-hover:text-white transition-all shadow-sm'>
+                                                            →
+                                                        </div>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {msg.sender === "assistant" && msg.text && (
+                                        <div className="flex items-center gap-1.5 -mt-1.5 px-3">
+                                            <button
+                                                onClick={() => toggleRating(msg.id, 'like')}
+                                                className={clsx(
+                                                    "p-1.5 rounded-md transition-all hover:bg-slate-100 group",
+                                                    messageRatings[msg.id] === 'like' ? "text-blue-600 bg-blue-50" : "text-slate-400"
+                                                )}
+                                            >
+                                                <ThumbsUp size={14} className={clsx(
+                                                    "transition-transform active:scale-90",
+                                                    messageRatings[msg.id] === 'like' ? "fill-blue-600" : "group-hover:text-slate-500"
+                                                )} />
+                                            </button>
+                                            <button
+                                                onClick={() => toggleRating(msg.id, 'dislike')}
+                                                className={clsx(
+                                                    "p-1.5 rounded-md transition-all hover:bg-slate-100 group",
+                                                    messageRatings[msg.id] === 'dislike' ? "text-red-600 bg-red-50" : "text-slate-400"
+                                                )}
+                                            >
+                                                <ThumbsDown size={14} className={clsx(
+                                                    "transition-transform active:scale-90",
+                                                    messageRatings[msg.id] === 'dislike' ? "fill-red-600" : "group-hover:text-slate-500"
+                                                )} />
+                                            </button>
                                         </div>
                                     )}
+                                    {/* Metadata removed as per user request */}
                                 </div>
+                            ))}
 
-                                {msg.sender === "assistant" && msg.text && (
-                                    <div className="flex items-center gap-1.5 -mt-1.5 px-3">
-                                        <button
-                                            onClick={() => toggleRating(msg.id, 'like')}
-                                            className={clsx(
-                                                "p-1.5 rounded-md transition-all hover:bg-slate-100 group",
-                                                messageRatings[msg.id] === 'like' ? "text-blue-600 bg-blue-50" : "text-slate-400"
-                                            )}
-                                        >
-                                            <ThumbsUp size={14} className={clsx(
-                                                "transition-transform active:scale-90",
-                                                messageRatings[msg.id] === 'like' ? "fill-blue-600" : "group-hover:text-slate-500"
-                                            )} />
-                                        </button>
-                                        <button
-                                            onClick={() => toggleRating(msg.id, 'dislike')}
-                                            className={clsx(
-                                                "p-1.5 rounded-md transition-all hover:bg-slate-100 group",
-                                                messageRatings[msg.id] === 'dislike' ? "text-red-600 bg-red-50" : "text-slate-400"
-                                            )}
-                                        >
-                                            <ThumbsDown size={14} className={clsx(
-                                                "transition-transform active:scale-90",
-                                                messageRatings[msg.id] === 'dislike' ? "fill-red-600" : "group-hover:text-slate-500"
-                                            )} />
-                                        </button>
-                                    </div>
-                                )}
-                                {/* Metadata removed as per user request */}
-                            </div>
-                        ))}
-
-                        {/* Assistant Status Indicator (Transient) */}
-                        {statusIndicator && (
-                            <div className="flex justify-start mb-4 animate-fade-in">
-                                <div className="flex gap-3 max-w-[85%] items-start">
-                                    <div className="w-7 h-7 rounded-full bg-blue-100 flex-shrink-0 flex items-center justify-center shadow-sm">
-                                        <span className="text-[12px]">🤖</span>
-                                    </div>
-                                    <div className="flex items-center gap-3 py-2.5 px-4 bg-white border border-slate-100 rounded-2xl shadow-sm italic text-[#1e3a5f]/70">
-                                        <span className="text-[16px] leading-none">{statusIndicator.emoji || "⚙️"}</span>
-                                        <span className="text-[13px] font-medium tracking-tight">{statusIndicator.text}</span>
-                                        <div className="flex gap-1">
-                                            <div className="w-1 h-1 bg-blue-400 rounded-full animate-bounce" />
-                                            <div className="w-1 h-1 bg-blue-400 rounded-full animate-bounce [animation-delay:0.2s]" />
-                                            <div className="w-1 h-1 bg-blue-400 rounded-full animate-bounce [animation-delay:0.4s]" />
+                            {/* Assistant Status Indicator (Transient) */}
+                            {statusIndicator && (
+                                <div className="flex justify-start mb-4 animate-fade-in">
+                                    <div className="flex gap-3 max-w-[85%] items-start">
+                                        <div className="w-7 h-7 rounded-full bg-blue-100 flex-shrink-0 flex items-center justify-center shadow-sm">
+                                            <span className="text-[12px]">🤖</span>
+                                        </div>
+                                        <div className="flex items-center gap-3 py-2.5 px-4 bg-white border border-slate-100 rounded-2xl shadow-sm italic text-[#1e3a5f]/70">
+                                            <span className="text-[16px] leading-none">{statusIndicator.emoji || "⚙️"}</span>
+                                            <span className="text-[13px] font-medium tracking-tight">{statusIndicator.text}</span>
+                                            <div className="flex gap-1">
+                                                <div className="w-1 h-1 bg-blue-400 rounded-full animate-bounce" />
+                                                <div className="w-1 h-1 bg-blue-400 rounded-full animate-bounce [animation-delay:0.2s]" />
+                                                <div className="w-1 h-1 bg-blue-400 rounded-full animate-bounce [animation-delay:0.4s]" />
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                        )}
+                            )}
 
-                        {isUserTranscribing && (
-                            <div className='flex flex-col gap-2 items-end ml-auto max-w-[85%] animate-fade-in mb-2'>
-                                <div className='bg-[#1e3a5f] p-4 rounded-xl rounded-tr-none shadow-lg border border-[#1e3a5f]/10 inline-flex items-center w-fit'>
-                                    <div className='flex space-x-1.5 h-3 items-center'>
-                                        <div className='w-2 h-2 bg-white/60 rounded-full animate-bounce [animation-delay:-0.3s]' />
-                                        <div className='w-2 h-2 bg-white/60 rounded-full animate-bounce [animation-delay:-0.15s]' />
-                                        <div className='w-2 h-2 bg-white/60 rounded-full animate-bounce' />
+                            {isUserTranscribing && (
+                                <div className='flex flex-col gap-2 items-end ml-auto max-w-[85%] animate-fade-in mb-2'>
+                                    <div className='bg-[#1e3a5f] p-4 rounded-xl rounded-tr-none shadow-lg border border-[#1e3a5f]/10 inline-flex items-center w-fit'>
+                                        <div className='flex space-x-1.5 h-3 items-center'>
+                                            <div className='w-2 h-2 bg-white/60 rounded-full animate-bounce [animation-delay:-0.3s]' />
+                                            <div className='w-2 h-2 bg-white/60 rounded-full animate-bounce [animation-delay:-0.15s]' />
+                                            <div className='w-2 h-2 bg-white/60 rounded-full animate-bounce' />
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        )}
+                            )}
 
-                        {isTyping && (
-                            <div className='flex flex-col gap-2 max-w-[85%] animate-fade-in'>
-                                <div className='bg-white p-4 rounded-2xl rounded-tl-none border border-gray-200 shadow-sm inline-flex items-center w-fit'>
-                                    <div className='flex space-x-1.5 h-3 items-center'>
-                                        <div className='w-2 h-2 bg-[#1e3a5f]/60 rounded-full animate-bounce [animation-delay:-0.3s]' />
-                                        <div className='w-2 h-2 bg-[#1e3a5f]/60 rounded-full animate-bounce [animation-delay:-0.15s]' />
-                                        <div className='w-2 h-2 bg-[#1e3a5f]/60 rounded-full animate-bounce' />
+                            {isTyping && (
+                                <div className='flex flex-col gap-2 max-w-[85%] animate-fade-in'>
+                                    <div className='bg-white p-4 rounded-2xl rounded-tl-none border border-gray-200 shadow-sm inline-flex items-center w-fit'>
+                                        <div className='flex space-x-1.5 h-3 items-center'>
+                                            <div className='w-2 h-2 bg-[#1e3a5f]/60 rounded-full animate-bounce [animation-delay:-0.3s]' />
+                                            <div className='w-2 h-2 bg-[#1e3a5f]/60 rounded-full animate-bounce [animation-delay:-0.15s]' />
+                                            <div className='w-2 h-2 bg-[#1e3a5f]/60 rounded-full animate-bounce' />
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        )}
-                        <div ref={messagesEndRef} />
+                            )}
+                            <div ref={messagesEndRef} />
+                            {/* Bottom 20%: empty scrollable breathing room (continuous with messages) */}
+                            <div className='h-[20%] flex-shrink-0' aria-hidden="true" />
+                        </div>
+
                     </div>
 
                     {/* Input Section */}
@@ -3129,9 +3204,9 @@ export default function RightChatPanel() {
 
                         <div className="px-4 pt-2 pb-3.5 flex flex-col gap-1.5">
                             {/* Global Workflow Progress Bar + Timer */}
-                            {activeWorkflow && !activeWorkflow.isCompleted && (
+                            {activeWorkflow && !activeWorkflow.isCompleted && isWorkflowActive && (
                                 <div className="flex items-center gap-2 mb-1 px-0.5">
-                                    <div className="flex-1 bg-slate-200 h-1.5 rounded-full overflow-hidden relative shadow-inner">
+                                    <div className="flex-1 bg-slate-200 h-0.5 rounded-full overflow-hidden relative">
                                         <div
                                             className="h-full transition-all duration-500 ease-out bg-[#6d28ff]"
                                             style={{ width: `${((Math.max(0, activeWorkflow.currentStepIndex) + 1) / (activeWorkflow.totalSteps ?? activeWorkflow.steps.length)) * 100}%` }}
@@ -3194,7 +3269,7 @@ export default function RightChatPanel() {
                             </form>
 
                             {/* Footer text */}
-                            <p className='text-[10px] text-gray-500 text-right mt-1 select-none font-medium'>Nina · AgenQ</p>
+                            <p className='text-[10px] text-gray-500 text-right mt-1 select-none font-medium'>Nina Powerd by AgenQ</p>
                         </div>
                     </div></div></div>
 

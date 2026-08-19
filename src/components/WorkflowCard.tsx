@@ -33,6 +33,23 @@ interface WorkflowCardProps {
     autoAdvance?: boolean;
 }
 
+function ActionBadge({ action }: { action?: string }) {
+    if (!action) return null;
+    const label = action.charAt(0).toUpperCase() + action.slice(1).toLowerCase();
+    return (
+        <span className={clsx(
+            "text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm border shrink-0",
+            action === "Click" ? "bg-emerald-50 text-emerald-600 border-emerald-200" :
+            action === "Type" ? "bg-purple-50 text-purple-600 border-purple-200" :
+            action === "Select" ? "bg-blue-50 text-blue-600 border-blue-200" :
+            action === "Navigate" ? "bg-orange-50 text-orange-600 border-orange-200" :
+            "bg-slate-50 text-slate-600 border-slate-200"
+        )}>
+            {label}
+        </span>
+    );
+}
+
 export default function WorkflowCard({
     workflow,
     currentStepIndex = 0,
@@ -89,7 +106,7 @@ export default function WorkflowCard({
             <div
                 className={clsx(
                     "border rounded-2xl bg-white overflow-hidden shadow-sm transition-all duration-300",
-                    isCompleted ? "border-emerald-200" : "border-purple-200"
+                    "border-slate-200"
                 )}
             >
                 {/* Header */}
@@ -160,11 +177,14 @@ export default function WorkflowCard({
                                             {renderHtml(step.t)}
                                         </div>
 
+                                        {/* Action badge (always visible, incl. collapsed) */}
+                                        <ActionBadge action={step.action} />
+
                                         {/* Right Icons (Check + Chevron) */}
                                         <div className="flex items-center gap-1.5 shrink-0 mt-0.5">
                                             {isPast ? (
-                                                <div className="w-3.5 h-3.5 rounded-full bg-[#10b981] flex items-center justify-center shadow-xs">
-                                                    <Check size={8} strokeWidth={3.5} className="text-white" />
+                                                <div className="w-3 h-3 rounded-full bg-emerald-200 flex items-center justify-center">
+                                                    <Check size={7} strokeWidth={3.5} className="text-emerald-600" />
                                                 </div>
                                             ) : null}
 
@@ -179,22 +199,6 @@ export default function WorkflowCard({
                                     {/* Expanded Step Body */}
                                     {isExpanded && (
                                         <div className="pl-[32px] pr-2 pb-3.5 pt-1 text-[12.5px] leading-relaxed text-[#64748b] animate-fade-in flex flex-col gap-2.5">
-                                            {/* Tag */}
-                                            {step.action && (
-                                                <div className="flex items-center">
-                                                    <span className={clsx(
-                                                        "text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded shadow-sm border",
-                                                        step.action === "Click" ? "bg-emerald-50 text-emerald-600 border-emerald-200" :
-                                                        step.action === "Type" ? "bg-purple-50 text-purple-600 border-purple-200" :
-                                                        step.action === "Select" ? "bg-blue-50 text-blue-600 border-blue-200" :
-                                                        step.action === "Navigate" ? "bg-orange-50 text-orange-600 border-orange-200" :
-                                                        "bg-slate-50 text-slate-600 border-slate-200"
-                                                    )}>
-                                                        {step.action}
-                                                    </span>
-                                                </div>
-                                            )}
-                                            
                                             {/* Dialog or Explanation */}
                                             <div className="text-[12.5px] leading-relaxed">
                                                 {step.dialog ? (
@@ -208,9 +212,9 @@ export default function WorkflowCard({
 
                                             {/* Example Value */}
                                             {step.x && (
-                                                <div className="flex items-center gap-1.5 mt-0.5 bg-purple-50/50 p-2 rounded-lg border border-purple-100/50">
-                                                    <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Example value:</span>
-                                                    <span className="text-[#8b5cf6] font-bold text-[12px]">{step.x}</span>
+                                                <div className="flex items-center flex-wrap gap-1.5 mt-0.5 bg-purple-50/50 p-2 rounded-lg border border-purple-100/50">
+                                                    <span className="text-[10px] font-semibold text-slate-500 tracking-wider">Example value:</span>
+                                                    <span className="text-[#8b5cf6] font-bold text-[10px]">{step.x}</span>
                                                 </div>
                                             )}
                                         </div>

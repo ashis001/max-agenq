@@ -1,9 +1,9 @@
 // Global playback speed for the onboarding walkthrough.
 // Drives both speech rate (via google-tts) and workflow step pacing.
 
-export type PlaybackSpeed = 0.5 | 1 | 1.5 | 1.75 | 2;
+export type PlaybackSpeed = 0.5 | 1 | 1.25 | 1.5 | 1.75 | 2;
 
-export const PLAYBACK_SPEED_OPTIONS: PlaybackSpeed[] = [0.5, 1, 1.5, 1.75, 2];
+export const PLAYBACK_SPEED_OPTIONS: PlaybackSpeed[] = [0.5, 1, 1.25, 1.5, 1.75, 2];
 
 let playbackSpeed: PlaybackSpeed = 1;
 
