@@ -8,6 +8,8 @@ import { useState, useMemo, useEffect, useRef } from "react";
 import { useChat } from "@/context/ChatContext";
 import { speakText, stopSpeech } from "@/lib/google-tts";
 import clsx from "clsx";
+import { pushOnboardingStep } from "@/lib/guide";
+import { getDelayScale } from "@/lib/playback";
 
 export function SetupStatus({ engine }: { engine: ReturnType<typeof useCorporateEngine> }) {
     const { corporate, setSetupStage } = engine;
@@ -93,7 +95,7 @@ export function SetupStatus({ engine }: { engine: ReturnType<typeof useCorporate
                 // IMPORTANT: Pausable delay function
                 const delay = async (ms: number) => {
                     if (!isWorkflowActiveRef.current) throw new Error("WorkflowCancelled");
-                    await new Promise(resolve => setTimeout(resolve, ms));
+                    await new Promise(resolve => setTimeout(resolve, ms * getDelayScale()));
                     while (isWorkflowPausedRef.current) {
                         if (!isWorkflowActiveRef.current) throw new Error("WorkflowCancelled");
                         await new Promise(resolve => setTimeout(resolve, 100));
@@ -101,7 +103,7 @@ export function SetupStatus({ engine }: { engine: ReturnType<typeof useCorporate
                     if (!isWorkflowActiveRef.current) throw new Error("WorkflowCancelled");
                 };
 
-                const pointAndSpeak = async (elementId: string, text: string) => {
+                const pointAndSpeak = async (elementId: string, text: string, value?: string, title?: string) => {
                     if (!isWorkflowActiveRef.current) throw new Error("WorkflowCancelled");
                     const element = document.getElementById(elementId);
                     if (!element) {
@@ -111,6 +113,12 @@ export function SetupStatus({ engine }: { engine: ReturnType<typeof useCorporate
                     setActiveFillingField(elementId);
                     await delay(50);
                     if (text && !isMuted) {
+                        const stepAction = elementId.includes("confirm") || elementId.includes("ok")
+                            ? "Click"
+                            : "Select";
+                        // Register this step as the running/current step BEFORE
+                        // speaking so the workflow table highlights it live.
+                        pushOnboardingStep(text, stepAction, title, value);
                         // Use silent mode to prevent the Chat Panel from triggering a second voice call
                         openChat(text, true);
                         await speakText(text);
@@ -133,39 +141,46 @@ export function SetupStatus({ engine }: { engine: ReturnType<typeof useCorporate
                     await delay(1000);
 
                     // 1. Next button
-                    await pointAndSpeak("setup-next-btn", "please click on the next button");
+                    await pointAndSpeak("setup-next-btn", "please click on the next button", undefined, "Proceed to Setup");
                     await delay(1000); // Increased delay after speech
                     clickElement("setup-next-btn");
                     await delay(1500); // Wait for modal to appear and settle
 
                     // 2. Subdomain - Wait for modal to appear and settle
-                    await pointAndSpeak("subdomain-radio-0", "Please Select a subdomain for the corporate insurance portal");
+                    localStorage.setItem("max_guide_step", "setup_step_1");
+                    await pointAndSpeak("subdomain-radio-0", "Please Select a subdomain for the corporate insurance portal", subdomainOptions[0], "Select Subdomain");
                     await delay(1000); // Increased delay
                     clickElement("subdomain-radio-0");
                     await delay(1200); // Longer delay to allow for UI updates and visual feedback
-                    await pointAndSpeak("subdomain-confirm-btn", "Please click on the confirm button");
+                    localStorage.setItem("max_guide_step", "setup_step_2");
+                    await pointAndSpeak("subdomain-confirm-btn", "Please click on the confirm button", undefined, "Confirm Subdomain");
                     await delay(1000); // Increased delay
                     clickElement("subdomain-confirm-btn");
                     await delay(2000); // Longer delay to allow modal to close and UI to settle
 
                     // 3. Admins
-                    await pointAndSpeak("admin-checkbox-0", "Please Select Group Admins to send you invite link");
+                    localStorage.setItem("max_guide_step", "setup_step_3");
+                    await pointAndSpeak("admin-checkbox-0", "Please Select Group Admins to send you invite link", undefined, "Select Group Admin");
                     await delay(1200);
 
-                    await pointAndSpeak("admins-confirm-btn", "Please click on the confirm button");
+                    localStorage.setItem("max_guide_step", "setup_step_4");
+                    await pointAndSpeak("admins-confirm-btn", "Please click on the confirm button", undefined, "Confirm Admin");
                     await delay(2000);
                     clickElement("admins-confirm-btn");
                     await delay(1500);
 
                     // 4. Success modal - Wait for modal to appear and settle
                     await delay(1500); // Allow time for modal to fully appear
-                    await pointAndSpeak("final-ok-btn", "All set! Please click on the OK button.");
+                    localStorage.setItem("max_guide_step", "setup_step_5");
+                    await pointAndSpeak("final-ok-btn", "All set! Please click on the OK button.", undefined, "Finish Setup");
                     await delay(3000); // Shortened delay for shorter speech
                     clickElement("final-ok-btn");
                     await delay(1200); // Allow time for navigation to complete
 
                     // 5. Final Message
                     if (!isMuted) {
+                        // Register as the running/current step before speaking
+                        pushOnboardingStep("Now finally you have onboard a new customer successfully", "Review", "Onboarding Complete");
                         openChat("Now finally you have onboard a new customer successfully", true);
                         await speakText("Now finally you have onboard a new customer successfully");
                     }
@@ -201,18 +216,23 @@ export function SetupStatus({ engine }: { engine: ReturnType<typeof useCorporate
                         hasStartedRef.current = true;
                         await new Promise(r => setTimeout(r, 1000));
                         const msg = "Your setup is almost complete. Please click the Next button to finalize the subdomain and admin settings.";
+                        // Register as the running/current step before speaking
+                        pushOnboardingStep(msg, "Click", "Proceeding to setup");
                         openChat(msg, true);
                         await speakText(msg);
                     } else if (modalState === 'SELECT_SUBDOMAIN') {
                         const msg = "Please select a subdomain for the corporate portal and click Confirm.";
+                        pushOnboardingStep(msg, "Select", "Selecting subdomain");
                         openChat(msg, true);
                         await speakText(msg);
                     } else if (modalState === 'SELECT_ADMINS') {
                         const msg = "Great. Now select the group administrator and click Confirm to send the invite.";
+                        pushOnboardingStep(msg, "Select", "Selecting admins");
                         openChat(msg, true);
                         await speakText(msg);
                     } else if (modalState === 'SUCCESS') {
                         const msg = "All set! Click OK to see your completed corporate profile.";
+                        pushOnboardingStep(msg, "Click", "Finishing setup");
                         openChat(msg, true);
                         await speakText(msg);
                         

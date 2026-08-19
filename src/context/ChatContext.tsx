@@ -1,7 +1,25 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback, Dispatch, SetStateAction } from "react";
 import { stopSpeech, setGlobalMuteState } from "@/lib/google-tts";
+
+export interface WorkflowStepItem {
+    t: string;
+    e: string;
+    dialog?: string;
+    action?: string;
+    x?: string;
+    alt?: string;
+    fast?: string;
+}
+
+export interface ActiveWorkflowData {
+    title: string;
+    steps: WorkflowStepItem[];
+    currentStepIndex: number;
+    isCompleted?: boolean;
+    totalSteps?: number;
+}
 
 interface ChatContextType {
     isOpen: boolean;
@@ -15,6 +33,9 @@ interface ChatContextType {
     setIsWorkflowPaused: (val: boolean) => void;
     isWorkflowActive: boolean;
     setIsWorkflowActive: (val: boolean) => void;
+    activeWorkflow: ActiveWorkflowData | null;
+    setActiveWorkflow: Dispatch<SetStateAction<ActiveWorkflowData | null>>;
+    setWorkflowStepIndex: (index: number) => void;
     toggleChat: () => void;
     openChat: (message?: string, silent?: boolean) => void;
     closeChat: () => void;
@@ -28,7 +49,6 @@ interface ChatContextType {
     setSubmittedClaimId: (id: string | null) => void;
 }
 
-
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
 
 export function ChatProvider({ children }: { children: React.ReactNode }) {
@@ -39,9 +59,22 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     const [isMuted, setIsMutedState] = useState(false);
     const [isWorkflowPaused, setIsWorkflowPaused] = useState(false);
     const [isWorkflowActive, setIsWorkflowActive] = useState(false);
+    const [activeWorkflow, setActiveWorkflow] = useState<ActiveWorkflowData | null>(null);
     const [isFloating, setIsFloating] = useState(false);
     const [isExpanded, setIsExpanded] = useState(false);
     const [submittedClaimId, setSubmittedClaimId] = useState<string | null>(null);
+
+    const setWorkflowStepIndex = useCallback((index: number) => {
+        setActiveWorkflow(prev => {
+            if (!prev) return null;
+            const isCompleted = index >= prev.steps.length - 1;
+            return {
+                ...prev,
+                currentStepIndex: index,
+                isCompleted: isCompleted || prev.isCompleted
+            };
+        });
+    }, []);
 
     // Load saved states from storage
     useEffect(() => {
@@ -108,6 +141,9 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
             setIsWorkflowPaused,
             isWorkflowActive,
             setIsWorkflowActive,
+            activeWorkflow,
+            setActiveWorkflow,
+            setWorkflowStepIndex,
             toggleChat,
             openChat,
             closeChat,

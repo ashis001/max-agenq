@@ -5,6 +5,7 @@ import { Edit2, Copy, FileText, Info, ChevronLeft } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { useChat } from "@/context/ChatContext";
 import { speakText } from "@/lib/google-tts";
+import { pushOnboardingStep, completeOnboardingGuide } from "@/lib/guide";
 
 export function CorporateOverview({ engine }: { engine: ReturnType<typeof useCorporateEngine> }) {
     const { corporate, setSetupStage } = engine;
@@ -22,7 +23,10 @@ export function CorporateOverview({ engine }: { engine: ReturnType<typeof useCor
                     
                     const msg = "Everything is set! Here is the final overview of Corporate profile. All tiers are active, and admin invites have been sent. I am now closing the onboarding workflow.";
                     openChat(msg, true);
+                    // Register as the running/current step before speaking
+                    pushOnboardingStep(msg, "Review", "Generate Corporate Overview");
                     await speakText(msg);
+                    completeOnboardingGuide();
                     
                     await new Promise(r => setTimeout(r, 6000));
                     

@@ -10,6 +10,8 @@ import clsx from "clsx";
 import { useChat } from "@/context/ChatContext";
 import { speakText } from "@/lib/google-tts";
 import { TIER_VOICE_MESSAGES } from "./tier-speech";
+import { pushOnboardingStep } from "@/lib/guide";
+import { getDelayScale } from "@/lib/playback";
 
 export function TierTable({ engine }: { engine: ReturnType<typeof useCorporateEngine> }) {
     const { corporate, attemptAdvance, setSetupStage } = engine;
@@ -97,7 +99,7 @@ export function TierTable({ engine }: { engine: ReturnType<typeof useCorporateEn
 
                     const delay = async (ms: number) => {
                         if (!isWorkflowActiveRef.current) throw new Error("WorkflowCancelled");
-                        await new Promise(resolve => setTimeout(resolve, ms));
+                        await new Promise(resolve => setTimeout(resolve, ms * getDelayScale()));
                         while (isWorkflowPausedRef.current) {
                             if (!isWorkflowActiveRef.current) throw new Error("WorkflowCancelled");
                             await new Promise(resolve => setTimeout(resolve, 100));
@@ -107,6 +109,7 @@ export function TierTable({ engine }: { engine: ReturnType<typeof useCorporateEn
 
                     const speak = async (text: string) => {
                         if (!text) return;
+                        pushOnboardingStep(text, undefined, "Add Coverage Tier");
                         await speakText(text);
                         if (isWorkflowPausedRef.current) {
                             await delay(0);
@@ -184,7 +187,7 @@ export function TierTable({ engine }: { engine: ReturnType<typeof useCorporateEn
 
                     const delay = async (ms: number) => {
                         if (!isWorkflowActiveRef.current) throw new Error("WorkflowCancelled");
-                        await new Promise(resolve => setTimeout(resolve, ms));
+                        await new Promise(resolve => setTimeout(resolve, ms * getDelayScale()));
                         while (isWorkflowPausedRef.current) {
                             if (!isWorkflowActiveRef.current) throw new Error("WorkflowCancelled");
                             await new Promise(resolve => setTimeout(resolve, 100));
@@ -194,6 +197,7 @@ export function TierTable({ engine }: { engine: ReturnType<typeof useCorporateEn
 
                     const speak = async (text: string) => {
                         if (!text) return;
+                        pushOnboardingStep(text, undefined, "Add Coverage Tier");
                         await speakText(text);
                         if (isWorkflowPausedRef.current) {
                             await delay(0);
@@ -242,7 +246,7 @@ export function TierTable({ engine }: { engine: ReturnType<typeof useCorporateEn
                 try {
                     const delay = async (ms: number) => {
                         if (!isWorkflowActiveRef.current) throw new Error("WorkflowCancelled");
-                        await new Promise(resolve => setTimeout(resolve, ms));
+                        await new Promise(resolve => setTimeout(resolve, ms * getDelayScale()));
                         while (isWorkflowPausedRef.current) {
                             if (!isWorkflowActiveRef.current) throw new Error("WorkflowCancelled");
                             await new Promise(resolve => setTimeout(resolve, 100));
@@ -252,6 +256,7 @@ export function TierTable({ engine }: { engine: ReturnType<typeof useCorporateEn
 
                     const speak = async (text: string) => {
                         if (!text) return;
+                        pushOnboardingStep(text, undefined, "Add Coverage Tier");
                         await speakText(text);
                         if (isWorkflowPausedRef.current) {
                             await delay(0);

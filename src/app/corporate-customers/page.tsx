@@ -9,6 +9,7 @@ import { fetchAllCorporates, deleteCorporate } from "@/lib/db";
 import { Corporate } from "@/lib/types";
 import { speakText } from "@/lib/google-tts";
 import MaxGuidePointer from "@/components/MaxGuidePointer";
+import { pushOnboardingStep } from "@/lib/guide";
 
 // Animated Grid Component
 const AnimatedGrid = () => (
@@ -48,6 +49,12 @@ export default function CorporateListingPage() {
                 setActiveGuide("add_customer");
                 // Final instruction on listing page
                 openChat("Now, please click on the 'Add New Customer' button in the top right corner.");
+                // Step 2 of the onboarding walkthrough
+                pushOnboardingStep(
+                    "Now, please click on the 'Add New Customer' button in the top right corner.",
+                    "Click",
+                    "Click Add New Customer"
+                );
             }, 1500);
             return () => clearTimeout(timer);
         }

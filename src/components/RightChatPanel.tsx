@@ -15,6 +15,7 @@ import {
     VolumeX,
     Pause,
     Play,
+    ArrowRight,
     Maximize2,
     MousePointer2,
     Paperclip,
@@ -29,18 +30,36 @@ import {
     Phone,
     PhoneCall,
     PhoneOff,
-    Sparkles
+    Sparkles,
+    Gauge,
+    Check
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useChat } from "@/context/ChatContext";
 import MaxGuidePointer from "@/components/MaxGuidePointer";
 import { fetchAllCorporates, deleteCorporate } from "@/lib/db";
 import { Corporate } from "@/lib/types";
-import { speakText, stopSpeech } from "@/lib/google-tts";
+import { speakText, stopSpeech, setSpeakingRate, setSpeakStateHooks } from "@/lib/google-tts";
+import {
+    setPlaybackSpeed,
+    getPlaybackSpeed,
+    PLAYBACK_SPEED_OPTIONS,
+    formatPlaybackSpeed,
+    PlaybackSpeed,
+} from "@/lib/playback";
 import clsx from "clsx";
 import policyPlans from "@/lib/policy-plans.json";
 import policyPurchase from "@/lib/policy-purchase.json";
 import { MeetingReasonForm, CustomTimeInput } from "./MeetingWorkflow";
+import WorkflowCard, { WorkflowData } from "./WorkflowCard";
+import {
+    resetOnboardingGuide,
+    pushOnboardingStep,
+    planWorkflowSteps,
+    getOnboardingGuide,
+    subscribeOnboardingGuide,
+    ONBOARDING_TOTAL_STEPS,
+} from "@/lib/guide";
 
 interface PolicyPlan {
     plan_id: string;
@@ -298,12 +317,17 @@ export default function RightChatPanel() {
         isWorkflowPaused,
         setIsWorkflowPaused,
         isWorkflowActive,
+        setIsWorkflowActive,
+        activeWorkflow,
+        setActiveWorkflow,
+        setWorkflowStepIndex,
         isFloating,
         setIsFloating,
         isExpanded,
         setIsExpanded,
         setSubmittedClaimId,
-        submittedClaimId
+        submittedClaimId,
+        openChat,
     } = useChat();
     const [history, setHistory] = useState<ChatSession[]>([]);
     const [inputValue, setInputValue] = useState("");
@@ -315,6 +339,8 @@ export default function RightChatPanel() {
     const [PurchaseStep, setPurchaseStep] = useState<number>(0); // NEW: Track Policy Purchase progress
     const [OnboardingStep, setOnboardingStep] = useState<number>(0); // NEW: Track Onboarding Storyboard progress
     const [meetingStep, setMeetingStep] = useState<number>(0); // NEW: Track Meeting booking progress
+    const [workflowElapsed, setWorkflowElapsed] = useState(0);
+    const workflowStartRef = useRef<number | null>(null);
     const [bookingName, setBookingName] = useState("");
     const [bookingSlot, setBookingSlot] = useState("");
     const [bookingEmail, setBookingEmail] = useState("");
@@ -372,6 +398,10 @@ export default function RightChatPanel() {
     const [isHeaderMenuOpen, setIsHeaderMenuOpen] = useState(false);
     const headerMenuRef = useRef<HTMLDivElement>(null);
 
+    // Playback speed (YouTube-style) for the onboarding walkthrough
+    const [speedSubmenuOpen, setSpeedSubmenuOpen] = useState(false);
+    const [selectedSpeed, setSelectedSpeed] = useState<PlaybackSpeed>(getPlaybackSpeed());
+
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             if (headerMenuRef.current && !headerMenuRef.current.contains(event.target as Node)) {
@@ -412,6 +442,147 @@ export default function RightChatPanel() {
     useEffect(() => {
         isListeningRef.current = isListening;
     }, [isListening]);
+
+    // Synchronize active workflow step with live app guide progression
+    useEffect(() => {
+        const checkGuideStep = () => {
+            if (typeof window === "undefined" || !activeWorkflow) return;
+            const step = localStorage.getItem("max_guide_step");
+            if (!step && !isWorkflowActive) return;
+
+            // Onboarding is now driven by the dynamic guide store, not this mapping.
+            if (activeWorkflow.title === "Corporate Customer Onboarding") return;
+
+            // Only ever advance the table forward — never reset it backward
+            // (e.g. when max_guide_step is temporarily cleared during navigation).
+            const advanceTo = (idx: number) => {
+                const clamped = Math.min(idx, activeWorkflow!.steps.length - 1);
+                if (clamped > activeWorkflow!.currentStepIndex) {
+                    setWorkflowStepIndex(clamped);
+                }
+            };
+
+                        if (activeWorkflow.title.includes("Corporate") || step?.includes("customer") || step?.includes("tier") || step?.includes("setup") || step?.includes("corp")) {
+                let targetIndex = activeWorkflow.currentStepIndex;
+                if (!step || step === "sidebar_corporate" || step === "start" || step === "start_onboarding") targetIndex = 0;
+                else if (step === "add_customer") targetIndex = 1;
+                else if (step === "corp_broker") targetIndex = 2;
+                else if (step === "corp_profile") targetIndex = 3;
+                else if (step === "corp_payment_platform") targetIndex = 4;
+                else if (step === "corp_name") targetIndex = 5;
+                else if (step === "corp_offices") targetIndex = 6;
+                else if (step === "corp_start_date") targetIndex = 7;
+                else if (step === "corp_email") targetIndex = 8;
+                else if (step === "corp_street") targetIndex = 9;
+                else if (step === "corp_unit") targetIndex = 10;
+                else if (step === "corp_city") targetIndex = 11;
+                else if (step === "corp_country") targetIndex = 12;
+                else if (step === "corp_province") targetIndex = 13;
+                else if (step === "corp_postal") targetIndex = 14;
+                else if (step === "corp_contact_first") targetIndex = 15;
+                else if (step === "corp_contact_last") targetIndex = 16;
+                else if (step === "corp_contact_phone") targetIndex = 17;
+                else if (step === "corp_contact_email") targetIndex = 18;
+                else if (step === "corp_contact_role") targetIndex = 19;
+                else if (step === "corp_waiting_initial") targetIndex = 20;
+                else if (step === "corp_waiting_new_hires") targetIndex = 21;
+                else if (step === "corp_define_tiers") targetIndex = 22;
+                else if (step === "corp_payment_method") targetIndex = 23;
+                else if (step === "corp_show_employer") targetIndex = 24;
+                else if (step === "corp_employee_count") targetIndex = 25;
+                else if (step === "corp_save_next") targetIndex = 26;
+                else if (step === "tier_config" || step === "tier_config_real") targetIndex = 27;
+                else if (step === "tier_edit_start") targetIndex = 28;
+                else if (step === "tier_step_1b") targetIndex = 29;
+                else if (step === "tier_step_2") targetIndex = 30;
+                else if (step === "tier_step_3") targetIndex = 31;
+                else if (step === "tier_step_4") targetIndex = 32;
+                else if (step === "tier_step_5") targetIndex = 33;
+                else if (step === "tier_step_6") targetIndex = 34;
+                else if (step === "tier_step_7") targetIndex = 35;
+                else if (step === "tier_step_8") targetIndex = 36;
+                else if (step === "tier_step_9") targetIndex = 37;
+                else if (step === "tier_step_10") targetIndex = 38;
+                else if (step === "tier_step_11") targetIndex = 39;
+                else if (step === "tier_step_12") targetIndex = 40;
+                else if (step === "tier_step_13") targetIndex = 41;
+                else if (step === "tier_step_14") targetIndex = 42;
+                else if (step === "tier_step_15") targetIndex = 43;
+                else if (step === "tier_step_16") targetIndex = 44;
+                else if (step === "tier_step_17") targetIndex = 45;
+                else if (step === "tier_step_18") targetIndex = 46;
+                else if (step === "tier_save_btn" || step === "tier_complete_next" || step === "tier_review_real") targetIndex = 47;
+                else if (step === "setup_status" || step === "setup_status_real") targetIndex = 48;
+                else if (step === "setup_step_1") targetIndex = 49;
+                else if (step === "setup_step_2") targetIndex = 50;
+                else if (step === "setup_step_3") targetIndex = 51;
+                else if (step === "setup_step_4") targetIndex = 52;
+                else if (step === "setup_step_5") targetIndex = 53;
+                else if (step === "corporate_overview" || step === "corporate_overview_real") {
+                    targetIndex = 54;
+                    if (activeWorkflow.currentStepIndex === 54) {
+                        activeWorkflow.isCompleted = true;
+                    }
+                }
+                advanceTo(targetIndex);
+            } else if (activeWorkflow.title.includes("Claim") || step?.includes("claim")) {
+                if (NinaStep > 0) advanceTo(NinaStep);
+            }
+        };
+
+        const interval = setInterval(checkGuideStep, 500);
+        return () => clearInterval(interval);
+    }, [activeWorkflow, isWorkflowActive, NinaStep, setWorkflowStepIndex]);
+
+    // Keep the onboarding WorkflowCard synced with the dynamic guide store.
+    // Components push each spoken step into the store; this mirrors it into
+    // activeWorkflow so the table + dialog always reflect what Nina is saying.
+    useEffect(() => {
+        const update = () => {
+            const g = getOnboardingGuide();
+            setActiveWorkflow((prev) => {
+                if (!prev || prev.title !== g.title) return prev;
+                return {
+                    ...prev,
+                    steps: g.steps,
+                    currentStepIndex: Math.max(0, g.currentIndex),
+                    isCompleted: g.isCompleted,
+                    totalSteps: g.totalSteps,
+                };
+            });
+        };
+        const unsub = subscribeOnboardingGuide(update);
+        return unsub;
+    }, [setActiveWorkflow]);
+
+    // When the onboarding walkthrough completes, automatically dismiss the
+    // workflow card after a few seconds and post a closing message in the chat
+    // (outside the workflow table).
+    const completionHandledRef = useRef(false);
+    useEffect(() => {
+        const completed = !!activeWorkflow?.isCompleted;
+        if (!completed) {
+            completionHandledRef.current = false;
+            return;
+        }
+        if (completionHandledRef.current) return;
+        completionHandledRef.current = true;
+        const t = setTimeout(() => {
+            openChat("Onboarding workflow completed successfully. Is there anything else I can help you with?");
+            setActiveWorkflow(null);
+        }, 4000);
+        return () => clearTimeout(t);
+    }, [activeWorkflow?.isCompleted, openChat, setActiveWorkflow]);
+
+    // Reflect global speech state (including workflow narration) in the UI so
+    // the "Speaking" indicator lights up while Nina is actually talking.
+    useEffect(() => {
+        setSpeakStateHooks(
+            () => { setIsSpeaking(true); isSpeakingRef.current = true; },
+            () => { setIsSpeaking(false); isSpeakingRef.current = false; }
+        );
+        return () => setSpeakStateHooks(null, null);
+    }, [setIsSpeaking]);
 
     // Helper to check and request microphone permissions
     const checkMicrophonePermission = async (): Promise<boolean> => {
@@ -694,7 +865,7 @@ export default function RightChatPanel() {
 
     const activeStreamIdRef = useRef<string | null>(null);
 
-    const streamMessage = async (text: string, sender: "assistant" | "user", actions?: { label: string; value: string }[], skipStream?: boolean, customType?: string): Promise<boolean> => {
+    const streamMessage = async (text: string, sender: "assistant" | "user", actions?: { label: string; value: string }[], skipStream?: boolean, customType?: string, hideBubble?: boolean): Promise<boolean> => {
         isInterruptedRef.current = false;
         hasSpokenActiveMessageRef.current = false;
         const id = Date.now().toString() + Math.random().toString(36).substr(2, 9);
@@ -702,6 +873,13 @@ export default function RightChatPanel() {
         const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
         const shouldBeSpoken = sender === "assistant" && !isMutedRef.current;
+
+        if (hideBubble) {
+            if (shouldBeSpoken) {
+                await speakWithIndicator(text);
+            }
+            return true;
+        }
 
         if (skipStream) {
             setMessages(prev => [...prev, { id, text, sender, timestamp, actions, customType, wasSpoken: shouldBeSpoken }]);
@@ -842,23 +1020,29 @@ export default function RightChatPanel() {
                     const actualMessage = isSilent ? externalMessage.slice(7) : externalMessage;
 
                     if (isSilent) {
-                        const id = Date.now().toString();
-                        setMessages(prev => [...prev, {
-                            id,
-                            text: "",
-                            sender: "assistant",
-                            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                        }]);
-                        const words = actualMessage.split(" ");
-                        let currentText = "";
-                        for (let i = 0; i < words.length; i++) {
-                            currentText += (i === 0 ? "" : " ") + words[i];
-                            setMessages(prev => prev.map(m => m.id === id ? { ...m, text: currentText } : m));
-                            await new Promise(resolve => setTimeout(resolve, 80));
+                        if (!isWorkflowActive) {
+                            const id = Date.now().toString();
+                            setMessages(prev => [...prev, {
+                                id,
+                                text: "",
+                                sender: "assistant",
+                                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                            }]);
+                            const words = actualMessage.split(" ");
+                            let currentText = "";
+                            for (let i = 0; i < words.length; i++) {
+                                currentText += (i === 0 ? "" : " ") + words[i];
+                                setMessages(prev => prev.map(m => m.id === id ? { ...m, text: currentText } : m));
+                                await new Promise(resolve => setTimeout(resolve, 80));
+                            }
                         }
                     } else {
                         lastInputTypeRef.current = "voice";
-                        await streamMessage(actualMessage, "assistant");
+                        if (isWorkflowActive) {
+                            await streamMessage(actualMessage, "assistant", undefined, false, undefined, true);
+                        } else {
+                            await streamMessage(actualMessage, "assistant");
+                        }
                     }
 
                     if (isStandardGreeting) {
@@ -892,7 +1076,39 @@ export default function RightChatPanel() {
                 triggerGreeting();
             }
         }
-    }, [externalMessage, isOpen, clearExternalMessage]);
+    }, [externalMessage, isOpen, clearExternalMessage, isWorkflowActive]);
+
+    // Handle Workflow Completion Message
+    const lastCompletedWorkflowTitle = useRef<string | null>(null);
+    useEffect(() => {
+        if (activeWorkflow?.isCompleted && lastCompletedWorkflowTitle.current !== activeWorkflow.title) {
+            lastCompletedWorkflowTitle.current = activeWorkflow.title;
+            const timer = setTimeout(() => {
+                streamMessage("The workflow is completed! Let me know if you need anything else.", "assistant");
+            }, 1000);
+            return () => clearTimeout(timer);
+        }
+        if (!activeWorkflow) {
+            lastCompletedWorkflowTitle.current = null;
+        }
+    }, [activeWorkflow?.isCompleted, activeWorkflow?.title]);
+
+    // Workflow elapsed timer (shown next to the progress bar)
+    useEffect(() => {
+        if (activeWorkflow && !activeWorkflow.isCompleted) {
+            if (workflowStartRef.current === null) {
+                workflowStartRef.current = Date.now();
+            }
+            const id = setInterval(() => {
+                if (workflowStartRef.current !== null) {
+                    setWorkflowElapsed(Math.floor((Date.now() - workflowStartRef.current) / 1000));
+                }
+            }, 1000);
+            return () => clearInterval(id);
+        }
+        workflowStartRef.current = null;
+        setWorkflowElapsed(0);
+    }, [activeWorkflow, activeWorkflow?.isCompleted]);
 
 
     // Fix Hydration mismatch for time
@@ -2357,6 +2573,45 @@ export default function RightChatPanel() {
                                     <Paperclip size={14} className="text-slate-400" />
                                     <span>Upload</span>
                                 </button>
+                                <div className="relative">
+                                    <button
+                                        type="button"
+                                        onClick={() => setSpeedSubmenuOpen(!speedSubmenuOpen)}
+                                        className="w-full text-left px-3 py-2 text-xs text-slate-600 hover:bg-slate-50 font-bold transition-colors flex items-center justify-between gap-2"
+                                    >
+                                        <span className="flex items-center gap-2">
+                                            <Gauge size={14} className="text-slate-400" />
+                                            <span>Playback Speed</span>
+                                        </span>
+                                        <span className="text-[10px] text-slate-400">{formatPlaybackSpeed(selectedSpeed)}</span>
+                                    </button>
+                                    {speedSubmenuOpen && (
+                                        <div className="absolute right-full top-0 mr-1 w-36 bg-white border border-slate-200 rounded-xl shadow-lg py-1 z-[110] animate-fade-in">
+                                            {PLAYBACK_SPEED_OPTIONS.map((s) => (
+                                                <button
+                                                    key={s}
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setPlaybackSpeed(s);
+                                                        setSpeakingRate(0.92 * s);
+                                                        setSelectedSpeed(s);
+                                                        setSpeedSubmenuOpen(false);
+                                                        setIsHeaderMenuOpen(false);
+                                                    }}
+                                                    className={clsx(
+                                                        "w-full text-left px-3 py-1.5 text-xs transition-colors flex items-center justify-between",
+                                                        s === selectedSpeed
+                                                            ? "bg-purple-50 text-[#6d28ff] font-bold"
+                                                            : "text-slate-600 hover:bg-slate-50"
+                                                    )}
+                                                >
+                                                    <span>{formatPlaybackSpeed(s)}</span>
+                                                    {s === selectedSpeed && <Check size={13} className="text-[#6d28ff]" />}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         )}
                     </div>
@@ -2505,7 +2760,9 @@ export default function RightChatPanel() {
                                     "flex flex-col gap-0.5",
                                     msg.sender === "user"
                                         ? "items-end ml-auto max-w-[85%]"
-                                        : "max-w-[85%]",
+                                        : msg.customType === "workflow-card"
+                                            ? "w-full"
+                                            : "max-w-[85%]",
                                 )}>
                                 {/* Label above user message bubble (Voice indication) */}
                                 {msg.sender === "user" && msg.inputType === "voice" && (
@@ -2525,11 +2782,12 @@ export default function RightChatPanel() {
 
                                 <div
                                     className={clsx(
-                                        "py-2 px-3.5 text-[13.5px] leading-relaxed transition-all duration-300",
+                                        "py-2 text-[13.5px] leading-relaxed transition-all duration-300",
                                         msg.sender === "user"
                                             ? "bg-[#1e3a5f] text-white rounded-xl rounded-tr-none shadow-lg border border-[#1e3a5f]/10"
                                             : "text-slate-700 font-medium",
-                                        msg.text.includes('|') ? "whitespace-normal min-w-full" : "whitespace-pre-wrap"
+                                        msg.text.includes('|') ? "whitespace-normal min-w-full" : "whitespace-pre-wrap",
+                                        msg.customType === "workflow-card" ? "pl-3.5 pr-0 w-full" : "px-3.5"
                                     )}>
                                     {renderMessageText(msg.text, msg.sender)}
 
@@ -2549,6 +2807,14 @@ export default function RightChatPanel() {
                                             onConfirm={(time) => {
                                                 handleSend(time);
                                             }}
+                                        />
+                                    )}
+
+                                    {msg.customType === "workflow-card" && activeWorkflow && (
+                                        <WorkflowCard
+                                            workflow={activeWorkflow}
+                                            currentStepIndex={activeWorkflow.currentStepIndex}
+                                            isCompleted={activeWorkflow.isCompleted}
                                         />
                                     )}
 
@@ -2579,14 +2845,41 @@ export default function RightChatPanel() {
                                                                 timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
                                                                 inputType: "text"
                                                             };
-                                                            setMessages(prev => [...prev, userMsg]);
+                                                            const workflowMsg: Message = {
+                                                                id: Date.now().toString() + "_wf",
+                                                                text: "",
+                                                                sender: "assistant",
+                                                                timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+                                                                customType: "workflow-card"
+                                                            };
+                                                            setMessages(prev => [...prev, userMsg, workflowMsg]);
+
+                                                            // Reset guide state in localStorage to prevent leftover steps from prior runs
+                                                            localStorage.setItem("max_guide_step", "sidebar_corporate");
+                                                            setWorkflowStepIndex(0);
+
+                                                            // Start Live Workflow Card in Right Panel
+                                                            setIsWorkflowActive(true);
+                                                            resetOnboardingGuide("Corporate Customer Onboarding");
+                                                            planWorkflowSteps(ONBOARDING_TOTAL_STEPS);
+                                                            pushOnboardingStep(
+                                                                "I'm starting the Corporate Customer Onboarding workflow for the new corporate customer.",
+                                                                "Navigate",
+                                                                "Starting Corporate Customer Onboarding"
+                                                            );
+                                                            setActiveWorkflow({
+                                                                title: "Corporate Customer Onboarding",
+                                                                currentStepIndex: 0,
+                                                                steps: getOnboardingGuide().steps,
+                                                                totalSteps: getOnboardingGuide().totalSteps
+                                                            });
                                                             
                                                             // Interactive Guide Logic
                                                             const navItem = document.getElementById("nav-item-corporate-customers");
                                                             if (navItem) {
                                                                 // 1. Speak & Show Message (cursor flies immediately, speech always completes first)
                                                                 setGuideTargetId("nav-item-corporate-customers");
-                                                                await streamMessage("Please select the Corporate Customer tab on the sidebar.", "assistant");
+                                                                await streamMessage("Please select the Corporate Customer tab on the sidebar.", "assistant", undefined, false, undefined, true);
                                                                 isInterruptedRef.current = true;
                                                                 setGuideTargetId(null);
                                                                 await new Promise((r) => setTimeout(r, 1500));
@@ -2597,7 +2890,7 @@ export default function RightChatPanel() {
                                                                 // Fallback
                                                                 localStorage.setItem("max_guide_step", "add_customer");
                                                                 router.push("/corporate-customers");
-                                                                }
+                                                            }
                                                         } else if (action.value === "sample_claim") {
                                                             isInterruptedRef.current = true;
                                                             stopSpeech();
@@ -2611,20 +2904,70 @@ export default function RightChatPanel() {
                                                                 timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
                                                                 inputType: "text"
                                                             };
-                                                            setMessages(prev => [...prev, userMsg]);
+                                                            const workflowMsg: Message = {
+                                                                id: Date.now().toString() + "_wf",
+                                                                text: "",
+                                                                sender: "assistant",
+                                                                timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+                                                                customType: "workflow-card"
+                                                            };
+                                                            setMessages(prev => [...prev, userMsg, workflowMsg]);
+
+                                                            // Reset guide state in localStorage to prevent leftover steps from prior runs
+                                                            localStorage.setItem("max_guide_step", "claim_insurance");
+                                                            setWorkflowStepIndex(0);
+
+                                                            // Start Live Workflow Card for Claims in Right Panel
+                                                            setIsWorkflowActive(true);
+                                                            setActiveWorkflow({
+                                                                title: "Sample Claim Submission",
+                                                                currentStepIndex: 0,
+                                                                steps: [
+                                                                    {
+                                                                        t: "I’m opening the <b>Claims</b> section.",
+                                                                        e: "Access the claims management portal to review and file claims.",
+                                                                        x: "Claims"
+                                                                    },
+                                                                    {
+                                                                        t: "I’m verifying the account under <b>Jon Mercer (ID: 2026AB)</b>.",
+                                                                        e: "Matches the claimant with active member policies.",
+                                                                        x: "Jon Mercer (2026AB)"
+                                                                    },
+                                                                    {
+                                                                        t: "I’m selecting the <b>Health Insurance</b> policy.",
+                                                                        e: "Directs the dental expense to the health benefit plan.",
+                                                                        x: "Health Policy"
+                                                                    },
+                                                                    {
+                                                                        t: "I’m uploading and extracting the <b>Dental Bill ($190)</b>.",
+                                                                        e: "Scans clinic name, date of service, and total amount.",
+                                                                        x: "Bright Clove Dental ($190)"
+                                                                    },
+                                                                    {
+                                                                        t: "I’m checking coverage limits under <b>Silver Plan</b>.",
+                                                                        e: "Verifies eligibility against the $200 dental annual limit.",
+                                                                        x: "Fully Eligible"
+                                                                    },
+                                                                    {
+                                                                        t: "I’m submitting the claim — <b>Claim ID: CLM-10234</b>.",
+                                                                        e: "Dispatches claim confirmation and notifies the member via email.",
+                                                                        x: "CLM-10234"
+                                                                    }
+                                                                ]
+                                                            });
                                                             
                                                             // Interactive Guide Logic for Claims
                                                             const navItem = document.getElementById("nav-item-claims");
                                                             if (navItem) {
                                                                 // 1. Speak & Show Message (cursor flies immediately, speech always completes first)
                                                                 setGuideTargetId("nav-item-claims");
-                                                                await streamMessage("Please select the Claims tab in the sidebar.", "assistant");
+                                                                await streamMessage("Please select the Claims tab in the sidebar.", "assistant", undefined, false, undefined, true);
                                                                 isInterruptedRef.current = true; // Keep mic off until the guide sequence finishes so it can't cut the next sentence
                                                                 setGuideTargetId(null);
                                                                 await new Promise((r) => setTimeout(r, 1000));
 
                                                                 // 2. Speak the next part fully, then navigate
-                                                                await streamMessage("Let's file a sample claim to show you how it works.", "assistant");
+                                                                await streamMessage("Let's file a sample claim to show you how it works.", "assistant", undefined, false, undefined, true);
                                                                 localStorage.setItem("max_guide_step", "claim_insurance");
                                                                 router.push("/claims");
                                                             } else {
@@ -2784,7 +3127,22 @@ export default function RightChatPanel() {
                             </div>
                         )}
 
-                        <div className="p-4 flex flex-col gap-2">
+                        <div className="px-4 pt-2 pb-3.5 flex flex-col gap-1.5">
+                            {/* Global Workflow Progress Bar + Timer */}
+                            {activeWorkflow && !activeWorkflow.isCompleted && (
+                                <div className="flex items-center gap-2 mb-1 px-0.5">
+                                    <div className="flex-1 bg-slate-200 h-1.5 rounded-full overflow-hidden relative shadow-inner">
+                                        <div
+                                            className="h-full transition-all duration-500 ease-out bg-[#6d28ff]"
+                                            style={{ width: `${((Math.max(0, activeWorkflow.currentStepIndex) + 1) / (activeWorkflow.totalSteps ?? activeWorkflow.steps.length)) * 100}%` }}
+                                        />
+                                    </div>
+                                    <span className="text-[10px] font-bold text-slate-500 tabular-nums select-none shrink-0">
+                                        {`${Math.floor(workflowElapsed / 60).toString().padStart(2, "0")}:${(workflowElapsed % 60).toString().padStart(2, "0")}`}
+                                    </span>
+                                </div>
+                            )}
+
                             {/* Input Form Card */}
                             <form
                                 onSubmit={(e) => {

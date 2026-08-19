@@ -10,6 +10,8 @@ import { speakText } from "@/lib/google-tts";
 import { MousePointer2 } from "lucide-react";
 import MaxGuidePointer from "@/components/MaxGuidePointer";
 import { TIER_VOICE_MESSAGES } from "./tier-speech";
+import { pushOnboardingStep } from "@/lib/guide";
+import { getDelayScale } from "@/lib/playback";
 
 // Type definitions for internal mock data
 interface Product {
@@ -358,8 +360,11 @@ export function TierEditorPanel({
 
                         await new Promise(r => setTimeout(r, 1000));
                         const reviewMsg = "I have filled the Tier Config details for Northbridge Manufacturing Ltd. Please review before submitting.";
+                        // Register as the running/current step before speaking
+                        pushOnboardingStep(reviewMsg, "Review", "Review Tier Config");
                         openChat(reviewMsg, true);
                         await speakText(reviewMsg);
+
 
                         setIsWorkflowActive(false);
                     } catch (e) {
@@ -379,7 +384,7 @@ export function TierEditorPanel({
 
                     const delay = async (ms: number) => {
                         if (!isWorkflowActiveRef.current) throw new Error("WorkflowCancelled");
-                        await new Promise(resolve => setTimeout(resolve, ms));
+                        await new Promise(resolve => setTimeout(resolve, ms * getDelayScale()));
                         while (isWorkflowPausedRef.current) {
                             if (!isWorkflowActiveRef.current) throw new Error("WorkflowCancelled");
                             await new Promise(resolve => setTimeout(resolve, 100));
@@ -395,6 +400,42 @@ export function TierEditorPanel({
                             await speakText(text);
                         }
                     };
+
+                    // Short, action-style titles so the workflow-card step title stays
+                    // distinct from the spoken dialog (matching the original hardcoded look).
+                    const TIER_STEP_TITLES: Record<string, string> = {
+                        "tier-name-input": "Tier Name",
+                        "tier-desc-input": "Tier Description",
+                        "tier-date-input": "Tier Effective Date",
+                        "tier-service-select": "Length of Service",
+                        "cat-cm1-btn": "Expand Mental Health",
+                        "plan-cw1-check": "Select Complete Wellness",
+                        "new-hc-input": "Set Headcount",
+                        "hc-date-select": "Select Effective Date",
+                        "hc-update-btn": "Update Headcount",
+                        "cat-cm2-btn": "Expand Travel Protection",
+                        "plan-tr1-single-check": "Select Travel Plan",
+                        "cat-cr1-btn": "Expand Private Health",
+                        "plan-myr1-check": "Select Medcan Care",
+                        "cat-cr2-btn": "Expand Health & Dental",
+                        "subcat-sub_gateway-btn": "Expand Gateway",
+                        "plan-gs1-check": "Select Gateway Silver",
+                        "cat-cr4-btn": "Expand Life Protection",
+                        "plan-p100-check": "Select Protection 100",
+                        "upgrade-enable-yes": "Enable Upgrades",
+                        "cat-ug1-btn": "Expand Upgrade Private Health",
+                        "subcat-ugsub_ph-btn": "Expand Upgrade Plans",
+                        "plan-ug_cx1-check": "Select Executive Upgrade",
+                        "cat-ug2-btn": "Expand Upgrade Health & Dental",
+                        "subcat-ugsub_gateway-btn": "Expand Upgrade Gateway",
+                        "plan-ug_gs1-check": "Select Upgrade Gateway",
+                        "voluntary-enable-yes": "Enable Voluntary",
+                        "cat-vl2-btn": "Expand Voluntary Plans",
+                        "subcat-vsc1-btn": "Expand Specialty Care",
+                        "plan-vhcd1-check": "Select High Cost Drugs",
+                        "tier-save-btn": "Save Tier",
+                    };
+                    const tierStepTitle = (id: string): string => TIER_STEP_TITLES[id] || "Configure Tier";
 
                     // Helper to type text into input
                     const typeText = async (fieldName: string, text: string) => {
@@ -457,6 +498,24 @@ export function TierEditorPanel({
 
                         // 3. Professional Speech Timing - EXACTLY like the form page
                         // Speak FIRST and await completion before any action
+                        const stepAction = config.action
+                            ? "Click"
+                            : config.id.includes("select") ||
+                              config.id.includes("radio") ||
+                              config.id.includes("date")
+                            ? "Select"
+                            : config.fieldName
+                            ? "Type"
+                            : "Click";
+                        // Register this step as the running/current step BEFORE
+                        // speaking so the workflow table highlights it live.
+                        pushOnboardingStep(
+                            config.speech,
+                            stepAction,
+                            tierStepTitle(config.id),
+                            config.value !== undefined ? String(config.value) : undefined
+                        );
+
                         await speak(config.speech);
 
                         // Brief pause after speech for visual poise
@@ -481,6 +540,9 @@ export function TierEditorPanel({
                     await delay(1500);
 
                     // 1. Basic Information section
+                    localStorage.setItem("max_guide_step", "tier_edit_start");
+                    await delay(50);
+                    localStorage.setItem("max_guide_step", "tier_step_1b");
                     await fillField({
                         id: "tier-name-input",
                         fieldName: "name",
@@ -511,6 +573,7 @@ export function TierEditorPanel({
 
                     // 2. Corporate Level Group Plans (Employer Paid)
                     // STEP: Expand "Mental Health & Wellbeing" section
+                    localStorage.setItem("max_guide_step", "tier_step_2");
                     await fillField({
                         id: "cat-cm1-btn",
                         speech: TIER_VOICE_MESSAGES.EXPAND_MENTAL_HEALTH,
@@ -522,8 +585,10 @@ export function TierEditorPanel({
                     await delay(500);
 
                     // STEP: Select "Complete Wellness"
+                    localStorage.setItem("max_guide_step", "tier_step_3");
                     await fillField({
                         id: "plan-cw1-check",
+                        value: "Complete Wellness",
                         speech: TIER_VOICE_MESSAGES.SELECT_COMPLETE_WELLNESS,
                         action: () => {
                             const target = PLAN_CATEGORIES.CORPORATE[0].products.find(p => p.id === "cw1");
@@ -537,6 +602,7 @@ export function TierEditorPanel({
                     // Step 1: Fill headcount input
                     await fillField({
                         id: "new-hc-input",
+                        value: "150",
                         speech: TIER_VOICE_MESSAGES.MODAL_HEADCOUNT,
                         action: () => {
                             const input = document.getElementById("new-hc-input") as HTMLInputElement;
@@ -549,6 +615,7 @@ export function TierEditorPanel({
                     // Step 2: Select effective date
                     await fillField({
                         id: "hc-date-select",
+                        value: "Feb 01, 2026",
                         speech: TIER_VOICE_MESSAGES.MODAL_EFFECTIVE_DATE,
                         action: () => {
                             const select = document.getElementById("hc-date-select") as HTMLSelectElement;
@@ -566,6 +633,7 @@ export function TierEditorPanel({
                     // Step 3: Click update button
                     await fillField({
                         id: "hc-update-btn",
+                        value: "150",
                         speech: TIER_VOICE_MESSAGES.MODAL_UPDATE,
                         action: () => {
                             const btn = document.getElementById("hc-update-btn");
@@ -589,6 +657,7 @@ export function TierEditorPanel({
                     await delay(1500);
 
                     // STEP: Expand "Emergency Travel Protection" section
+                    localStorage.setItem("max_guide_step", "tier_step_4");
                     await fillField({
                         id: "cat-cm2-btn",
                         speech: TIER_VOICE_MESSAGES.EXPAND_TRAVEL_PROTECTION,
@@ -600,8 +669,10 @@ export function TierEditorPanel({
                     await delay(800);
 
                     // STEP: Select "Max Insurance Travel" with Single variant
+                    localStorage.setItem("max_guide_step", "tier_step_5");
                     await fillField({
                         id: "plan-tr1-single-check",
+                        value: "Max Insurance Travel (Single)",
                         speech: TIER_VOICE_MESSAGES.SELECT_TRAVEL_PLAN,
                         action: () => {
                             const target = PLAN_CATEGORIES.CORPORATE[1].products.find(p => p.id === "tr1");
@@ -614,6 +685,7 @@ export function TierEditorPanel({
 
                     await fillField({
                         id: "new-hc-input",
+                        value: "150",
                         speech: "I'll set the headcount for travel protection to 150 as well.",
                         action: () => {
                             const input = document.getElementById("new-hc-input") as HTMLInputElement;
@@ -625,6 +697,7 @@ export function TierEditorPanel({
 
                     await fillField({
                         id: "hc-date-select",
+                        value: "Feb 01, 2026",
                         speech: "Selecting the effective date.",
                         action: () => {
                             const select = document.getElementById("hc-date-select") as HTMLSelectElement;
@@ -639,6 +712,7 @@ export function TierEditorPanel({
 
                     await fillField({
                         id: "hc-update-btn",
+                        value: "150",
                         speech: "And updating the travel protection headcount.",
                         action: () => {
                             const btn = document.getElementById("hc-update-btn");
@@ -662,6 +736,7 @@ export function TierEditorPanel({
                     // 3. Core Plans (Essential Health) - Two-Step Process
 
                     // STEP 1: Expand Private Health section
+                    localStorage.setItem("max_guide_step", "tier_step_6");
                     await fillField({
                         id: "cat-cr1-btn",
                         speech: TIER_VOICE_MESSAGES.EXPAND_PRIVATE_HEALTH,
@@ -673,8 +748,10 @@ export function TierEditorPanel({
                     await delay(1200);
 
                     // STEP 2: Select Medcan Year Round Care from Private Health
+                    localStorage.setItem("max_guide_step", "tier_step_7");
                     await fillField({
                         id: "plan-myr1-check",
+                        value: "Medcan Year Round Care",
                         speech: TIER_VOICE_MESSAGES.SELECT_CORE_PLAN,
                         action: () => {
                             const p1 = PRIVATE_HEALTH_PRODUCTS.find(p => p.id === "myr1");
@@ -685,6 +762,7 @@ export function TierEditorPanel({
                     await delay(800);
 
                     // STEP 3: Expand Health & Dental Insurance section
+                    localStorage.setItem("max_guide_step", "tier_step_8");
                     await fillField({
                         id: "cat-cr2-btn",
                         speech: TIER_VOICE_MESSAGES.EXPAND_HEALTH_DENTAL,
@@ -707,8 +785,10 @@ export function TierEditorPanel({
                     await delay(1200);
 
                     // STEP 5: Select Gateway Silver from Health & Dental
+                    localStorage.setItem("max_guide_step", "tier_step_9");
                     await fillField({
                         id: "plan-gs1-check",
+                        value: "Gateway Silver",
                         speech: TIER_VOICE_MESSAGES.SELECT_HEALTH_DENTAL,
                         action: () => {
                             const p3 = PLAN_CATEGORIES.CORE[1].subcategories?.[0].products.find(p => p.id === "gs1");
@@ -719,6 +799,7 @@ export function TierEditorPanel({
                     await delay(800);
 
                     // STEP 6: Expand Life & Disability Protection section
+                    localStorage.setItem("max_guide_step", "tier_step_10");
                     await fillField({
                         id: "cat-cr4-btn",
                         speech: TIER_VOICE_MESSAGES.EXPAND_LIFE_PROTECTION,
@@ -730,8 +811,10 @@ export function TierEditorPanel({
                     await delay(1200);
 
                     // STEP 7: Select Protection 100 from Life Protection
+                    localStorage.setItem("max_guide_step", "tier_step_11");
                     await fillField({
                         id: "plan-p100-check",
+                        value: "Protection 100",
                         speech: TIER_VOICE_MESSAGES.SELECT_LIFE_PLAN,
                         action: () => {
                             const p2 = PLAN_CATEGORIES.CORE[2].products.find(p => p.id === "p100");
@@ -742,8 +825,10 @@ export function TierEditorPanel({
                     await delay(1200);
 
                     // 4. Upgrade Plans (Employee Paid Difference)
+                    localStorage.setItem("max_guide_step", "tier_step_12");
                     await fillField({
                         id: "upgrade-enable-yes",
+                        value: "Yes",
                         speech: TIER_VOICE_MESSAGES.ENABLE_UPGRADE,
                         action: () => {
                             const radio = document.getElementById("upgrade-enable-yes") as HTMLInputElement;
@@ -757,6 +842,7 @@ export function TierEditorPanel({
                     await delay(1500);
 
                     // STEP 1: Expand Private Health category (Matching visual sequence)
+                    localStorage.setItem("max_guide_step", "tier_step_13");
                     await fillField({
                         id: "cat-ug1-btn",
                         speech: "Now expanding the Private Health category for premium upgrade options.",
@@ -779,8 +865,10 @@ export function TierEditorPanel({
                     await delay(1200);
 
                     // STEP 2: Select Complete Executive Care upgrade
+                    localStorage.setItem("max_guide_step", "tier_step_14");
                     await fillField({
                         id: "plan-ug_cx1-check",
+                        value: "Complete Executive Care",
                         speech: "I'll enable a premium 'Complete Executive Care' upgrade option here.",
                         action: () => {
                             const target = PLAN_CATEGORIES.UPGRADE[0].subcategories?.[0].products.find(p => p.id === "ug_cx1");
@@ -791,6 +879,7 @@ export function TierEditorPanel({
                     await delay(1200);
 
                     // STEP 3: Expand Health & Dental Insurance section
+                    localStorage.setItem("max_guide_step", "tier_step_15");
                     await fillField({
                         id: "cat-ug2-btn",
                         speech: "Next, let's look at the Health & Dental Insurance upgrade options.",
@@ -813,8 +902,10 @@ export function TierEditorPanel({
                     await delay(1200);
 
                     // STEP 5: Select Gateway Silver upgrade plan
+                    localStorage.setItem("max_guide_step", "tier_step_16");
                     await fillField({
                         id: "plan-ug_gs1-check",
+                        value: "Gateway Silver",
                         speech: TIER_VOICE_MESSAGES.SELECT_UPGRADE_PLAN,
                         action: () => {
                             const target = PLAN_CATEGORIES.UPGRADE[1].subcategories?.[0].products.find(p => p.id === "ug_gs1");
@@ -825,8 +916,10 @@ export function TierEditorPanel({
                     await delay(800);
 
                     // 5. Voluntary Plans (Employee Choice)
+                    localStorage.setItem("max_guide_step", "tier_step_17");
                     await fillField({
                         id: "voluntary-enable-yes",
+                        value: "Yes",
                         speech: TIER_VOICE_MESSAGES.ENABLE_VOLUNTARY,
                         action: () => {
                             const radio = document.getElementById("voluntary-enable-yes") as HTMLInputElement;
@@ -862,8 +955,10 @@ export function TierEditorPanel({
                     await delay(1200);
 
                     // STEP 3: Select High Cost Drugs voluntary plan
+                    localStorage.setItem("max_guide_step", "tier_step_18");
                     await fillField({
                         id: "plan-vhcd1-check",
+                        value: "High Cost Drugs",
                         speech: TIER_VOICE_MESSAGES.SELECT_VOLUNTARY_PLAN,
                         action: () => {
                             const target = PLAN_CATEGORIES.VOLUNTARY[1].subcategories?.[0].products.find(p => p.id === "vhcd1");
@@ -874,6 +969,7 @@ export function TierEditorPanel({
                     await delay(1200);
 
                     // 6. Save and Finalize
+                    localStorage.setItem("max_guide_step", "tier_save_btn");
                     await fillField({
                         id: "tier-save-btn",
                         speech: TIER_VOICE_MESSAGES.SAVING,
@@ -892,6 +988,8 @@ export function TierEditorPanel({
 
                     // 7. Success message
                     const successMsg = TIER_VOICE_MESSAGES.SAVED_SUCCESSFULLY;
+                    // Register as the running/current step before speaking
+                    pushOnboardingStep(successMsg, "Review", "Tier Saved");
                     openChat(successMsg);
                     await speakText(successMsg);
 

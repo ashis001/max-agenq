@@ -188,6 +188,34 @@ let currentAudio: HTMLAudioElement | null = null;
 let resolveCurrentAudio: (() => void) | null = null;
 let globalAudioMuted = false;
 
+// Global speaking rate (driven by the playback-speed control in the chat UI).
+let currentSpeakingRate = 0.92;
+
+/**
+ * Set the global speaking rate used by speakText when no explicit rate is given.
+ * @param rate 0.92 ≈ "Normal (1x)"; higher = faster, lower = slower.
+ */
+export function setSpeakingRate(rate: number): void {
+    currentSpeakingRate = rate;
+}
+
+export function getSpeakingRate(): number {
+    return currentSpeakingRate;
+}
+
+// Hooks so the UI can reflect speaking state (e.g. a "Speaking" indicator
+// that should light up while the workflow narrates, not just normal chat).
+let onSpeakStart: (() => void) | null = null;
+let onSpeakEnd: (() => void) | null = null;
+
+export function setSpeakStateHooks(
+    start: (() => void) | null,
+    end: (() => void) | null
+): void {
+    onSpeakStart = start;
+    onSpeakEnd = end;
+}
+
 /**
  * Update the global mute state for the TTS utility.
  * When muted, all currently playing audio will stop and no new audio will start.
@@ -261,6 +289,7 @@ export function playAudio(audioContent: string, playbackRate: number = 1.0): Pro
  * Stops any currently playing audio.
  */
 export function stopSpeech(): void {
+    const wasSpeaking = !!currentAudio;
     if (currentAudio) {
         currentAudio.pause();
         currentAudio.currentTime = 0;
@@ -270,6 +299,7 @@ export function stopSpeech(): void {
         resolveCurrentAudio();
         resolveCurrentAudio = null;
     }
+    if (wasSpeaking && onSpeakEnd) onSpeakEnd();
 }
 
 /**
@@ -278,17 +308,24 @@ export function stopSpeech(): void {
 export async function speakText(text: string, options: TTSOptions = {}): Promise<void> {
     if (globalAudioMuted) return;
 
+    // Use the global playback speed rate unless an explicit rate is provided.
+    const desiredRate = options.speakingRate ?? currentSpeakingRate;
+
     try {
-        const { audioContent, isElevenLabs } = await synthesizeSpeech(text, options);
+        const { audioContent, isElevenLabs } = await synthesizeSpeech(text, { ...options, speakingRate: desiredRate });
 
         // Critical check after synthesis delay
         if (globalAudioMuted) return;
 
-        // If it's ElevenLabs, we apply the speaking rate manually via playbackRate
-        // If it's Google, the rate is already baked into the audio file
-        const rate = isElevenLabs ? (options.speakingRate || 0.92) : 1.0;
+        // ElevenLabs: apply rate via playbackRate (baked into audio for Google).
+        const rate = isElevenLabs ? desiredRate : 1.0;
 
-        await playAudio(audioContent, rate);
+        if (onSpeakStart) onSpeakStart();
+        try {
+            await playAudio(audioContent, rate);
+        } finally {
+            if (onSpeakEnd) onSpeakEnd();
+        }
     } catch (error) {
         console.error('Failed to speak text:', error);
     }

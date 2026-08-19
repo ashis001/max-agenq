@@ -13,6 +13,8 @@ import { useEffect, useState, useRef } from "react";
 import clsx from "clsx";
 import { SAMPLE_CORPORATE_1 } from "@/lib/sample-data";
 import { useChat } from "@/context/ChatContext";
+import { pushOnboardingStep } from "@/lib/guide";
+import { getDelayScale } from "@/lib/playback";
 
 // Define the schema
 const corporateSchema = z.object({
@@ -189,7 +191,7 @@ export function CorporateInfoForm({ engine }: { engine: ReturnType<typeof useCor
                     // Helper for natural delay
                     const delay = async (ms: number) => {
                         if (!isWorkflowActiveRef.current) throw new Error("WorkflowCancelled");
-                        await new Promise(resolve => setTimeout(resolve, ms));
+                        await new Promise(resolve => setTimeout(resolve, ms * getDelayScale()));
                         while (isWorkflowPausedRef.current) {
                             if (!isWorkflowActiveRef.current) throw new Error("WorkflowCancelled");
                             await new Promise(resolve => setTimeout(resolve, 100));
@@ -207,6 +209,69 @@ export function CorporateInfoForm({ engine }: { engine: ReturnType<typeof useCor
                             await speakText(text);
                         }
                     };
+
+                    const actionForField = (f: string): string => {
+                        if (
+                            f.includes("waitingPeriod") ||
+                            f.includes("defineCoverage") ||
+                            f.includes("paymentMethod") ||
+                            f.includes("showEmployer") ||
+                            f === "broker" ||
+                            f === "selectProfile" ||
+                            f === "paymentPlatform" ||
+                            f.includes("provincialOffices") ||
+                            f.includes("address.country") ||
+                            f.includes("address.province") ||
+                            f.includes("role")
+                        ) {
+                            return "Select";
+                        }
+                        return "Type";
+                    };
+
+                    // Capture the actual value entered/selected for the workflow step,
+                    // so the table's "Example value" reflects the real dropdown/radio/
+                    // checkbox/input/date choice rather than a placeholder.
+                    const formatStepValue = (f: string, v: any): string => {
+                        if (v === undefined || v === null) return "";
+                        if (f.toLowerCase().includes("date")) {
+                            const d = new Date(v);
+                            if (!isNaN(d.getTime())) {
+                                return d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+                            }
+                        }
+                        return String(v);
+                    };
+
+                    // Short, action-style titles (like the original hardcoded workflow)
+                    // so the card's step title stays distinct from the spoken dialog.
+                    const STEP_TITLES: Record<string, string> = {
+                        broker: "Select Broker",
+                        selectProfile: "Choose Profile",
+                        paymentPlatform: "Payment Platform",
+                        name: "Company Name",
+                        provincialOffices: "Provincial Offices",
+                        policyStartDate: "Policy Start Date",
+                        contactEmail: "Contact Email",
+                        "address.street1": "Street Address",
+                        "address.unit": "Unit / Suite",
+                        "address.city": "City",
+                        "address.country": "Country",
+                        "address.province": "Province / State",
+                        "address.postalCode": "Postal Code",
+                        "contacts.0.firstName": "HR First Name",
+                        "contacts.0.lastName": "HR Last Name",
+                        "contacts.0.phone": "HR Phone",
+                        "contacts.0.email": "HR Email",
+                        "contacts.0.role": "HR Role",
+                        waitingPeriodInitial: "Waiting Period (Existing)",
+                        waitingPeriodNewHires: "Waiting Period (New Hires)",
+                        defineCoverageTiers: "Define Coverage Tiers",
+                        paymentMethod: "Payment Method",
+                        showEmployerName: "Show Employer Name",
+                        employeeCount: "Employee Count",
+                    };
+                    const titleForField = (f: string): string => STEP_TITLES[f] || f;
 
                     // 1. Auto-fill data sequentially (Simulating user input)
                     const fillField = async (field: any, value: any, isLast: boolean = false) => {
@@ -230,6 +295,10 @@ export function CorporateInfoForm({ engine }: { engine: ReturnType<typeof useCor
 
                             setActiveFillingField(field);
                             if (el) el.focus({ preventScroll: true });
+
+                            // Register this step as the running/current step BEFORE
+                            // speaking so the workflow table highlights it live.
+                            pushOnboardingStep(VOICE_MESSAGES[field], actionForField(field), titleForField(field), formatStepValue(field, value));
 
                             // Professional Voice-Over - AWAIT completion
                             await speak(VOICE_MESSAGES[field]);
@@ -273,54 +342,95 @@ export function CorporateInfoForm({ engine }: { engine: ReturnType<typeof useCor
                     };
 
                     await delay(500);
+                    localStorage.setItem("max_guide_step", "corp_broker");
                     await fillField("broker", SAMPLE_CORPORATE_1.broker);
+                    
+                    localStorage.setItem("max_guide_step", "corp_profile");
                     await fillField("selectProfile", SAMPLE_CORPORATE_1.selectProfile);
+                    
+                    localStorage.setItem("max_guide_step", "corp_payment_platform");
                     await fillField("paymentPlatform", SAMPLE_CORPORATE_1.paymentPlatform);
 
                     await delay(300);
+                    localStorage.setItem("max_guide_step", "corp_name");
                     await fillField("name", SAMPLE_CORPORATE_1.name || "TechFlow Solutions Inc.");
+                    
+                    localStorage.setItem("max_guide_step", "corp_offices");
                     await fillField("provincialOffices", SAMPLE_CORPORATE_1.provincialOffices);
 
                     await delay(300);
+                    localStorage.setItem("max_guide_step", "corp_start_date");
                     if (SAMPLE_CORPORATE_1.policyStartDate) {
                         await fillField("policyStartDate", new Date(SAMPLE_CORPORATE_1.policyStartDate).toISOString().split('T')[0]);
                     }
+                    
+                    localStorage.setItem("max_guide_step", "corp_email");
                     await fillField("contactEmail", SAMPLE_CORPORATE_1.contactEmail);
 
                     await delay(300);
                     if (SAMPLE_CORPORATE_1.address) {
+                        localStorage.setItem("max_guide_step", "corp_street");
                         await fillField("address.street1", SAMPLE_CORPORATE_1.address.street1);
-                        if (SAMPLE_CORPORATE_1.address.unit) await fillField("address.unit", SAMPLE_CORPORATE_1.address.unit);
+                        
+                        if (SAMPLE_CORPORATE_1.address.unit) {
+                            localStorage.setItem("max_guide_step", "corp_unit");
+                            await fillField("address.unit", SAMPLE_CORPORATE_1.address.unit);
+                        }
 
+                        localStorage.setItem("max_guide_step", "corp_city");
                         await fillField("address.city", SAMPLE_CORPORATE_1.address.city);
+                        
+                        localStorage.setItem("max_guide_step", "corp_country");
                         await fillField("address.country", SAMPLE_CORPORATE_1.address.country);
+                        
+                        localStorage.setItem("max_guide_step", "corp_province");
                         await fillField("address.province", SAMPLE_CORPORATE_1.address.province);
+                        
+                        localStorage.setItem("max_guide_step", "corp_postal");
                         await fillField("address.postalCode", SAMPLE_CORPORATE_1.address.postalCode);
                     }
 
                     await delay(300);
                     if (SAMPLE_CORPORATE_1.contacts && SAMPLE_CORPORATE_1.contacts.length > 0) {
                         const contact = SAMPLE_CORPORATE_1.contacts[0];
+                        localStorage.setItem("max_guide_step", "corp_contact_first");
                         await fillField("contacts.0.firstName", contact.firstName);
+                        
+                        localStorage.setItem("max_guide_step", "corp_contact_last");
                         await fillField("contacts.0.lastName", contact.lastName);
+                        
+                        localStorage.setItem("max_guide_step", "corp_contact_phone");
                         await fillField("contacts.0.phone", contact.phone);
-                        // Added email autofill as per request
+                        
+                        localStorage.setItem("max_guide_step", "corp_contact_email");
                         await fillField("contacts.0.email", contact.email);
 
-                        // Autofill Role (Moved before Enrollment policies)
                         await delay(300);
+                        localStorage.setItem("max_guide_step", "corp_contact_role");
                         await fillField("contacts.0.role", "HR Admin Access");
                     }
 
+                    localStorage.setItem("max_guide_step", "corp_waiting_initial");
                     await fillField("waitingPeriodInitial", SAMPLE_CORPORATE_1.waitingPeriodInitial ? "yes" : "no");
+                    
+                    localStorage.setItem("max_guide_step", "corp_waiting_new_hires");
                     await fillField("waitingPeriodNewHires", SAMPLE_CORPORATE_1.waitingPeriodNewHires);
+                    
+                    localStorage.setItem("max_guide_step", "corp_define_tiers");
                     await fillField("defineCoverageTiers", SAMPLE_CORPORATE_1.defineCoverageTiers ? "yes" : "no");
+                    
+                    localStorage.setItem("max_guide_step", "corp_payment_method");
                     await fillField("paymentMethod", SAMPLE_CORPORATE_1.paymentMethod);
+                    
+                    localStorage.setItem("max_guide_step", "corp_show_employer");
                     await fillField("showEmployerName", SAMPLE_CORPORATE_1.showEmployerName ? "yes" : "no");
+                    
+                    localStorage.setItem("max_guide_step", "corp_employee_count");
                     await fillField("employeeCount", SAMPLE_CORPORATE_1.employeeCount || 150, true);
 
                     // Final Step: Submit Button Highlight
                     await delay(500);
+                    localStorage.setItem("max_guide_step", "corp_save_next");
                     setIsSubmittingHighlighted(true);
 
                     const finalMsg = "Excellent. This HR contact is now configured. Please click the 'Save & Next' button below to navigate to the next step.";
@@ -328,6 +438,9 @@ export function CorporateInfoForm({ engine }: { engine: ReturnType<typeof useCor
 
                     await new Promise(resolve => setTimeout(resolve, 500));
                     setActiveFillingField("submit-button");
+
+                    // Register as the running/current step before speaking
+                    pushOnboardingStep(finalMsg, "Click", "Save & Proceed to Tiers", SAMPLE_CORPORATE_1.name || "the corporate customer");
 
                     // Wait for speech to finish completely
                     await speak(finalMsg);
