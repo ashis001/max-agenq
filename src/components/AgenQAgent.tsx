@@ -4,15 +4,15 @@ import Script from "next/script";
 import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 
-const AGENQ_AGENT_ID = "2b69b018-c154-4547-8a36-80e01ce62fa4";
+const AGENQ_AGENT_ID = "bcf6f3dd-569e-45be-ac55-64870e25aadd";
 const AGENQ_MOUNT_KEY = `agent-mount-state-${AGENQ_AGENT_ID}`;
 
 const AGENQ_CONFIG = {
   agentId: AGENQ_AGENT_ID,
-  projectId: "364626e9-82d3-4d31-b994-439d77a29f31",
-  customerCode: "SUPER-USER",
+  projectId: "09f9f457-1f95-49b0-8454-855ee7449370",
+  customerCode: "AWS",
   backendProtocol: "backend-v2",
-  apiBaseUrl: "https://general-backend.aws.agenq.com",
+  apiBaseUrl: "https://general-backend-dev.aws.agenq.com",
   authEndpoint: "/api/agenq/token",
 };
 
@@ -30,7 +30,7 @@ export function AgenQAgent() {
       // Ensure widget starts CLOSED — clear any leftover "OPEN" state from localStorage
       try {
         localStorage.setItem(AGENQ_MOUNT_KEY, "CLOSED");
-      } catch (_) {}
+      } catch (_) { }
 
       // Render the SDK with initialState CLOSED so it doesn't auto-expand
       (window as any).AGENQ.render({
@@ -48,7 +48,7 @@ export function AgenQAgent() {
     <>
       <div id="agenq-root" />
       <Script
-        src="https://cdn.agenqglobal.com/agenq-client-sdk.js"
+        src="https://cdn.agenqglobal.com/agenq-client-sdk--dev.js"
         strategy="afterInteractive"
       />
     </>
@@ -90,7 +90,7 @@ export function triggerAgenQOpen() {
           score += 30;
         }
       }
-    } catch (_) {}
+    } catch (_) { }
 
     // 2. Avatar/image verification
     if (el.tagName === "IMG") {
