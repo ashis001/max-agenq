@@ -2170,25 +2170,8 @@ export default function RightChatPanel() {
                 return;
             }
 
-            if (query.includes("sold a new group insurance deal") || query.includes("northbridge") || (query.includes("set up") && query.includes("customer onboarding")) || query.includes("onboarding_query") || query.includes("onboarding") || query.includes("onboard") || (engineResult.decision === "route" && engineResult.intent === "onboard_customer")) {
-                if (isInterruptedRef.current) return;
-                setIsTyping(false);
-                const combinedIntro = "Got it. We can do these 2 ways.\n\n**Training Mode**: I walk you through each step, by using sample data.\n\n**Execution Mode**: I will complete the setup with actual data on your behalf, and then you just need to review it before submission.";
-                await streamMessage(combinedIntro, "assistant");
-
-                setIsTyping(true);
-                await new Promise((resolve) => setTimeout(resolve, 1000));
-                setIsTyping(false);
-
-                const followUpText = "What would you like?";
-                setPendingContext("onboarding_sample_prompt"); // Set the context for the next turn
-                await streamMessage(followUpText, "assistant", [
-                    { label: "Training Mode (Sample Data)", value: "sample" },
-                    { label: "Execution Mode (Real Data)", value: "real" },
-                ]);
-                return;
-            }
-
+            // --- FIX: handle active onboarding workflow BEFORE new onboarding trigger ---
+            // ensures typing a company name (e.g. "Acme Corporate Solutions") doesn't re-trigger the intro
             if (OnboardingStep === 1) {
                 setOnboardingStep(2);
                 setIsTyping(false);
@@ -2352,6 +2335,25 @@ export default function RightChatPanel() {
                     await streamMessage("Northbridge Manufacturing Ltd. has been submitted for onboarding.\n\nI also created an audit summary showing:\n• Which fields were extracted from documents\n• Which fields you provided manually\n• Which documents were used\n• Submission time and workflow status", "assistant");
                     return;
                 }
+            }
+
+            if (query.includes("sold a new group insurance deal") || query.includes("northbridge") || (query.includes("set up") && query.includes("customer onboarding")) || query.includes("onboarding_query") || query.includes("onboarding") || query.includes("onboard") || (engineResult.decision === "route" && engineResult.intent === "onboard_customer")) {
+                if (isInterruptedRef.current) return;
+                setIsTyping(false);
+                const combinedIntro = "Got it. We can do these 2 ways.\n\n**Training Mode**: I walk you through each step, by using sample data.\n\n**Execution Mode**: I will complete the setup with actual data on your behalf, and then you just need to review it before submission.";
+                await streamMessage(combinedIntro, "assistant");
+
+                setIsTyping(true);
+                await new Promise((resolve) => setTimeout(resolve, 1000));
+                setIsTyping(false);
+
+                const followUpText = "What would you like?";
+                setPendingContext("onboarding_sample_prompt");
+                await streamMessage(followUpText, "assistant", [
+                    { label: "Training Mode (Sample Data)", value: "sample" },
+                    { label: "Execution Mode (Real Data)", value: "real" },
+                ]);
+                return;
             }
 
             // --- INTENT ENGINE: human-like clarification ---
@@ -3251,7 +3253,7 @@ export default function RightChatPanel() {
                                     ref={fileInputRef}
                                     onChange={handleFileUpload}
                                     className="hidden"
-                                    accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
+                                    accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.rtf"
                                 />
 
                                 <button
