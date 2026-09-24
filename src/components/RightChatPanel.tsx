@@ -2825,12 +2825,12 @@ export default function RightChatPanel() {
                 {/* Chat Messages Area */}
                 <div className='flex-1 flex flex-col min-w-0 bg-white'>
                     {/* Talk Action Button */}
-                    <div className="px-6 py-2 border-b border-slate-100 flex-shrink-0 bg-white">
+                    <div className="hidden px-6 py-2 border-b border-slate-100 flex-shrink-0 bg-white">
                         <button
                             type="button"
                             onClick={() => toggleListening(true)}
                             className={clsx(
-                                "w-full py-2.5 flex items-center justify-center gap-2 rounded-xl font-medium text-sm transition-all duration-300 shadow-sm border-0",
+                                "w-full py-2.5 flex items-center justify-center gap-2 rounded-xl font-medium text-sm transition-all duration-300 shadow-sm border-0 invisible",
                                 isVoiceMode
                                     ? "bg-red-500 text-white hover:bg-red-600"
                                     : "bg-[#1e3a5f] text-white hover:bg-[#152943]"
