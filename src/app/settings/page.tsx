@@ -3,18 +3,30 @@
 import MaxGreeting from "@/components/MaxGreeting";
 import { Sidebar } from "../corporate-customers/[id]/_components/Sidebar";
 import {
-    Settings as SettingsIcon,
     User,
     Bell,
     Lock,
     Eye,
+    EyeOff,
     ShieldCheck,
-    Globe,
-    ChevronRight,
     Database,
-    Cloud
+    Cloud,
+    ChevronRight,
+    Volume2,
+    Mic,
+    KeyRound,
+    Check,
+    Trash2,
+    Play,
+    Save,
+    AlertCircle,
+    Sparkles,
+    Info,
+    ExternalLink,
+    Settings as SettingsIcon,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { speakText } from "@/lib/google-tts";
 
 const SETTINGS_GROUPS = [
     {
@@ -30,13 +42,371 @@ const SETTINGS_GROUPS = [
         items: [
             { id: "appearance", label: "Appearance", description: "Dark mode and UI density", icon: Eye },
             { id: "data", label: "Data Management", description: "Export and archival settings", icon: Database },
+            { id: "voice", label: "Voice & TTS", description: "ElevenLabs API key & voice", icon: Volume2 },
             { id: "api", label: "API Keys", description: "Developer access and keys", icon: Cloud },
         ]
     }
 ];
 
+// Helper to read/write directly to localStorage so we stay in sync with google-tts.ts
+function getStored(key: string): string | null {
+    if (typeof window === "undefined") return null;
+    try { return localStorage.getItem(key); } catch { return null; }
+}
+
+function VoiceSettingsPanel() {
+    const [apiKey, setApiKey] = useState("");
+    const [voiceId, setVoiceId] = useState("");
+    const [model, setModel] = useState("");
+    const [showKey, setShowKey] = useState(false);
+    const [saved, setSaved] = useState(false);
+    const [hasKey, setHasKey] = useState(false);
+    const [isTesting, setIsTesting] = useState(false);
+    const [testStatus, setTestStatus] = useState<"idle" | "success" | "error">("idle");
+    const [testMsg, setTestMsg] = useState("");
+
+    // Load on mount
+    useEffect(() => {
+        const k = getStored("tts_elevenlabs_api_key") || "";
+        const v = getStored("tts_elevenlabs_voice_id") || "";
+        const m = getStored("tts_elevenlabs_model") || "";
+        setApiKey(k);
+        setVoiceId(v);
+        setModel(m);
+        setHasKey(!!k.trim());
+        // Sync with external changes
+        const handler = () => {
+            const nk = getStored("tts_elevenlabs_api_key") || "";
+            setHasKey(!!nk.trim());
+            setApiKey(nk);
+        };
+        window.addEventListener("tts-settings-changed", handler);
+        window.addEventListener("storage", handler);
+        return () => {
+            window.removeEventListener("tts-settings-changed", handler);
+            window.removeEventListener("storage", handler);
+        };
+    }, []);
+
+    const handleSave = () => {
+        const trimmed = apiKey.trim();
+        if (!trimmed) {
+            setTestStatus("error");
+            setTestMsg("Please enter a valid ElevenLabs API key (starts with sk_...)");
+            setTimeout(() => setTestStatus("idle"), 3000);
+            return;
+        }
+        localStorage.setItem("tts_elevenlabs_api_key", trimmed);
+        if (voiceId.trim()) localStorage.setItem("tts_elevenlabs_voice_id", voiceId.trim());
+        else localStorage.removeItem("tts_elevenlabs_voice_id");
+        if (model.trim()) localStorage.setItem("tts_elevenlabs_model", model.trim());
+        else localStorage.removeItem("tts_elevenlabs_model");
+        window.dispatchEvent(new CustomEvent("tts-settings-changed", { detail: { key: "tts_elevenlabs_api_key", value: trimmed } }));
+        setHasKey(true);
+        setSaved(true);
+        setTestStatus("success");
+        setTestMsg("ElevenLabs key saved! Voice will now use ElevenLabs.");
+        setTimeout(() => { setSaved(false); setTestStatus("idle"); }, 3000);
+    };
+
+    const handleClear = () => {
+        localStorage.removeItem("tts_elevenlabs_api_key");
+        localStorage.removeItem("tts_elevenlabs_voice_id");
+        localStorage.removeItem("tts_elevenlabs_model");
+        window.dispatchEvent(new CustomEvent("tts-settings-changed", { detail: { key: "tts_elevenlabs_api_key", value: null } }));
+        setApiKey("");
+        setVoiceId("");
+        setModel("");
+        setHasKey(false);
+        setSaved(false);
+        setTestStatus("success");
+        setTestMsg("Cleared — will now use default Google voice.");
+        setTimeout(() => setTestStatus("idle"), 3000);
+    };
+
+    const handleTest = async () => {
+        if (!hasKey && !apiKey.trim()) {
+            setTestStatus("error");
+            setTestMsg("Save an ElevenLabs API key first to test ElevenLabs voice. Currently using Google voice.");
+            setTimeout(() => setTestStatus("idle"), 4000);
+            return;
+        }
+        // If user typed but hasn't saved yet, save implicitly for test
+        if (apiKey.trim() && apiKey.trim() !== getStored("tts_elevenlabs_api_key")) {
+            localStorage.setItem("tts_elevenlabs_api_key", apiKey.trim());
+            window.dispatchEvent(new CustomEvent("tts-settings-changed", { detail: { key: "tts_elevenlabs_api_key", value: apiKey.trim() } }));
+            setHasKey(true);
+        }
+        setIsTesting(true);
+        setTestStatus("idle");
+        try {
+            await speakText("Hello! This is a test of your ElevenLabs voice configuration. If you hear this in a premium voice, your key is working correctly.");
+            setTestStatus("success");
+            setTestMsg("Test voice played successfully via ElevenLabs!");
+        } catch (e: any) {
+            setTestStatus("error");
+            setTestMsg(e?.message || "Failed to generate voice. Check your API key.");
+        } finally {
+            setIsTesting(false);
+            setTimeout(() => setTestStatus("idle"), 4000);
+        }
+    };
+
+    const maskedKey = hasKey && apiKey ? `${apiKey.slice(0, 7)}...${apiKey.slice(-4)}` : "";
+
+    return (
+        <div className="p-8 space-y-6 animate-slide-up">
+            {/* Header */}
+            <div className="flex items-center gap-4 pb-6 border-b border-slate-100">
+                <div className="p-3 bg-gradient-to-br from-violet-600 to-indigo-600 rounded-2xl shadow-lg shadow-violet-600/20">
+                    <Volume2 className="w-6 h-6 text-white" />
+                </div>
+                <div className="flex-1">
+                    <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                        Voice & TTS Settings
+                        {hasKey ? (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-[10px] font-black tracking-widest text-emerald-700 uppercase">
+                                <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" /> ElevenLabs Active
+                            </span>
+                        ) : (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100 border border-slate-200 text-[10px] font-black tracking-widest text-slate-600 uppercase">
+                                <Mic className="w-3 h-3" /> Google Voice (Default)
+                            </span>
+                        )}
+                    </h2>
+                    <p className="text-sm text-slate-500 font-medium">Configure how Max speaks — bring your own ElevenLabs key for premium voices</p>
+                </div>
+            </div>
+
+            {/* Info Banner */}
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl p-4 flex gap-3">
+                <div className="p-2 bg-blue-600 rounded-xl h-fit">
+                    <Info className="w-4 h-4 text-white" />
+                </div>
+                <div className="space-y-1">
+                    <p className="text-xs font-bold text-slate-900">How it works</p>
+                    <p className="text-xs text-slate-600 leading-relaxed">
+                        <span className="font-bold text-slate-900">No key →</span> Max uses default Google TTS (free, same as before).
+                        <br />
+                        <span className="font-bold text-violet-700">With key →</span> Max uses your ElevenLabs API key for premium, natural voices. Key is stored locally in your browser.
+                    </p>
+                </div>
+            </div>
+
+            {/* Form */}
+            <div className="space-y-5">
+                {/* API Key */}
+                <div className="space-y-2">
+                    <label className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">
+                        <KeyRound className="w-3.5 h-3.5" /> ElevenLabs API Key <span className="text-red-400">*</span>
+                    </label>
+                    <div className="relative">
+                        <input
+                            type={showKey ? "text" : "password"}
+                            value={apiKey}
+                            onChange={(e) => setApiKey(e.target.value)}
+                            placeholder="sk_... paste your ElevenLabs API key here"
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 pr-20 text-sm font-mono font-medium text-slate-900 placeholder:text-slate-400 placeholder:font-sans focus:outline-none focus:ring-2 focus:ring-violet-600/10 focus:border-violet-600 transition-all"
+                        />
+                        <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                            <button
+                                type="button"
+                                onClick={() => setShowKey(!showKey)}
+                                className="p-2 rounded-lg hover:bg-slate-200 text-slate-500 transition-colors"
+                                title={showKey ? "Hide" : "Show"}
+                            >
+                                {showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                            </button>
+                        </div>
+                    </div>
+                    {hasKey && maskedKey && (
+                        <p className="text-[11px] text-emerald-600 font-medium px-1 flex items-center gap-1.5">
+                            <Check className="w-3 h-3" /> Saved key: <span className="font-mono font-bold">{maskedKey}</span> — voice routed via ElevenLabs
+                        </p>
+                    )}
+                    {!hasKey && (
+                        <p className="text-[11px] text-slate-500 font-medium px-1">
+                            No key saved — Max will use Google voice. Get a key at{" "}
+                            <a href="https://elevenlabs.io/app/settings/api-keys" target="_blank" rel="noopener noreferrer" className="text-violet-600 font-bold hover:underline inline-flex items-center gap-1">
+                                elevenlabs.io <ExternalLink className="w-3 h-3" />
+                            </a>
+                        </p>
+                    )}
+                </div>
+
+                {/* Voice ID & Model (optional) */}
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1 flex items-center gap-1.5">
+                            <Sparkles className="w-3 h-3" /> Voice ID <span className="text-slate-400 font-normal normal-case tracking-normal">(optional)</span>
+                        </label>
+                        <input
+                            type="text"
+                            value={voiceId}
+                            onChange={(e) => setVoiceId(e.target.value)}
+                            placeholder="21m00Tcm4TlvDq8ikWAM (Rachel)"
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-mono font-medium text-slate-900 placeholder:text-slate-400 placeholder:font-sans focus:outline-none focus:ring-2 focus:ring-violet-600/10 focus:border-violet-600 transition-all"
+                        />
+                        <p className="text-[10px] text-slate-400 px-1">Default: Rachel (21m00...). Find IDs at ElevenLabs Voice Library.</p>
+                    </div>
+                    <div className="space-y-2">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Model <span className="text-slate-400 font-normal normal-case tracking-normal">(optional)</span></label>
+                        <select
+                            value={model}
+                            onChange={(e) => setModel(e.target.value)}
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-violet-600/10 focus:border-violet-600 transition-all"
+                        >
+                            <option value="">eleven_multilingual_v2 (default)</option>
+                            <option value="eleven_multilingual_v2">eleven_multilingual_v2</option>
+                            <option value="eleven_turbo_v2_5">eleven_turbo_v2_5</option>
+                            <option value="eleven_monolingual_v1">eleven_monolingual_v1</option>
+                        </select>
+                    </div>
+                </div>
+
+                {/* Status toast */}
+                {testStatus !== "idle" && (
+                    <div className={`flex items-center gap-2 px-4 py-3 rounded-xl border text-xs font-bold ${testStatus === "success" ? "bg-emerald-50 border-emerald-200 text-emerald-800" : "bg-red-50 border-red-200 text-red-800"}`}>
+                        {testStatus === "success" ? <Check className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
+                        {testMsg}
+                    </div>
+                )}
+
+                {/* Actions */}
+                <div className="flex flex-wrap gap-3 pt-2">
+                    <button
+                        onClick={handleSave}
+                        className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-[#0a1e3b] text-white text-xs font-bold shadow-lg shadow-blue-900/20 hover:scale-[1.02] hover:bg-[#122a52] transition-all"
+                    >
+                        <Save className="w-4 h-4" /> {saved ? "Saved!" : "Save Key"}
+                    </button>
+                    <button
+                        onClick={handleTest}
+                        disabled={isTesting}
+                        className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 text-white text-xs font-bold shadow-lg shadow-violet-600/20 hover:scale-[1.02] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        <Play className="w-4 h-4" /> {isTesting ? "Testing..." : "Test Voice"}
+                    </button>
+                    {hasKey && (
+                        <button
+                            onClick={handleClear}
+                            className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-white border border-slate-200 text-slate-700 text-xs font-bold hover:bg-red-50 hover:border-red-200 hover:text-red-700 transition-all"
+                        >
+                            <Trash2 className="w-4 h-4" /> Remove & Use Google
+                        </button>
+                    )}
+                </div>
+
+                <p className="text-[11px] text-slate-400 font-medium leading-relaxed bg-slate-50 border border-slate-100 rounded-xl p-3">
+                    <span className="font-bold text-slate-600">Privacy:</span> Your key is stored only in <span className="font-mono font-bold">localStorage</span> on this browser — never sent to our servers. To use on another device, add it again there. Clearing browser data will remove it.
+                </p>
+            </div>
+        </div>
+    );
+}
+
+function PlaceholderPanel({ id }: { id: string }) {
+    const titles: Record<string, { title: string; desc: string }> = {
+        security: { title: "Security & Password", desc: "Authentication and access control — coming soon" },
+        notifications: { title: "Notifications", desc: "Email and push alert preferences — coming soon" },
+        appearance: { title: "Appearance", desc: "Dark mode and UI density — coming soon" },
+        data: { title: "Data Management", desc: "Export and archival settings — coming soon" },
+        api: { title: "API Keys (Legacy)", desc: "This tab has moved to Voice & TTS. Use Voice & TTS to manage ElevenLabs." },
+    };
+    const t = titles[id] || { title: id, desc: "This section is under construction." };
+    return (
+        <div className="p-8 space-y-6 animate-slide-up">
+            <div className="flex items-center gap-4 pb-6 border-b border-slate-100">
+                <div className="p-3 bg-slate-100 rounded-2xl">
+                    <SettingsIcon className="w-6 h-6 text-slate-500" />
+                </div>
+                <div>
+                    <h2 className="text-xl font-bold text-slate-900">{t.title}</h2>
+                    <p className="text-sm text-slate-500 font-medium">{t.desc}</p>
+                </div>
+            </div>
+            <div className="bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-8 text-center">
+                <p className="text-sm font-bold text-slate-500">No settings yet for this section.</p>
+                <p className="text-xs text-slate-400 mt-1">Switch to <span className="font-bold text-violet-600">Voice & TTS</span> to configure ElevenLabs.</p>
+            </div>
+        </div>
+    );
+}
+
 export default function SettingsPage() {
-    const [activeTab, setActiveTab] = useState("profile");
+    const [activeTab, setActiveTab] = useState("voice");
+
+    // Handle hash like #voice
+    useEffect(() => {
+        if (typeof window !== "undefined" && window.location.hash) {
+            const h = window.location.hash.replace("#", "");
+            if (h) setActiveTab(h);
+        }
+    }, []);
+
+    const renderContent = () => {
+        if (activeTab === "profile") {
+            return (
+                <div className="p-8 space-y-8 animate-slide-up">
+                    <div className="flex items-center gap-4 pb-6 border-b border-slate-100">
+                        <div className="p-3 bg-blue-600 rounded-2xl shadow-lg shadow-blue-600/20">
+                            <User className="w-6 h-6 text-white" />
+                        </div>
+                        <div>
+                            <h2 className="text-xl font-bold text-slate-900">Profile Information</h2>
+                            <p className="text-sm text-slate-500 font-medium">Manage how you appear on the platform</p>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Full Name</label>
+                            <input
+                                type="text"
+                                defaultValue="John Smith"
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600/10 focus:border-blue-600 transition-all"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Email Address</label>
+                            <input
+                                type="email"
+                                defaultValue="john.smith@maxinsurance.com"
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600/10 focus:border-blue-600 transition-all"
+                            />
+                        </div>
+                        <div className="space-y-2 col-span-2">
+                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Job Title</label>
+                            <input
+                                type="text"
+                                defaultValue="Lead Administrator"
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600/10 focus:border-blue-600 transition-all"
+                            />
+                        </div>
+                        <div className="space-y-2 col-span-2">
+                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Brief Biography</label>
+                            <textarea
+                                rows={4}
+                                defaultValue="Lead administrator for the Group Benefitz enterprise portal. Managing 120+ corporate accounts."
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600/10 focus:border-blue-600 transition-all resize-none"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="pt-6 border-t border-slate-100 flex justify-end gap-3">
+                        <button className="px-6 py-2.5 rounded-xl text-xs font-bold text-slate-500 hover:bg-slate-100 transition-all">
+                            Cancel
+                        </button>
+                        <button className="px-6 py-2.5 rounded-xl bg-[#0a1e3b] text-white text-xs font-bold shadow-lg shadow-blue-900/20 hover:scale-105 transition-all">
+                            Save Changes
+                        </button>
+                    </div>
+                </div>
+            );
+        }
+        if (activeTab === "voice") return <VoiceSettingsPanel />;
+        return <PlaceholderPanel id={activeTab} />;
+    };
 
     return (
         <div className='flex min-h-screen bg-gradient-to-tr from-slate-200 via-indigo-50 to-blue-100 font-sans selection:bg-blue-600/10'>
@@ -53,11 +423,16 @@ export default function SettingsPage() {
                         <h1 className='text-2xl font-bold text-slate-900 tracking-tight'>Settings</h1>
                         <p className="text-xs text-slate-500 font-medium">Configure your platform experience</p>
                     </div>
+                    {activeTab === "voice" && (
+                        <a href="https://elevenlabs.io" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50">
+                            <Sparkles className="w-3.5 h-3.5 text-violet-600" /> Get ElevenLabs Key <ExternalLink className="w-3 h-3" />
+                        </a>
+                    )}
                 </header>
 
-                <div className='relative z-10 p-8 flex gap-8 animate-fade-in'>
+                <div className='relative z-10 p-8 flex flex-col lg:flex-row gap-8 animate-fade-in'>
                     {/* Settings Navigation */}
-                    <div className="w-80 space-y-8">
+                    <div className="w-full lg:w-80 space-y-8 shrink-0">
                         {SETTINGS_GROUPS.map((group) => (
                             <div key={group.title} className="space-y-3">
                                 <p className="px-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">{group.title}</p>
@@ -71,11 +446,11 @@ export default function SettingsPage() {
                                             <div className={`p-2 rounded-lg ${activeTab === item.id ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-500"}`}>
                                                 <item.icon className="w-4 h-4" />
                                             </div>
-                                            <div className="text-left">
+                                            <div className="text-left flex-1 min-w-0">
                                                 <p className={`text-xs font-bold ${activeTab === item.id ? "text-blue-600" : "text-slate-900"}`}>{item.label}</p>
-                                                <p className="text-[10px] text-slate-400 font-medium">{item.description}</p>
+                                                <p className="text-[10px] text-slate-400 font-medium truncate">{item.description}</p>
                                             </div>
-                                            {activeTab === item.id && <ChevronRight className="w-4 h-4 ml-auto text-blue-600" />}
+                                            {activeTab === item.id && <ChevronRight className="w-4 h-4 ml-auto text-blue-600 shrink-0" />}
                                         </button>
                                     ))}
                                 </div>
@@ -84,62 +459,8 @@ export default function SettingsPage() {
                     </div>
 
                     {/* Active Content */}
-                    <div className="flex-1 bg-white/90 backdrop-blur-xl rounded-3xl border border-slate-300 shadow-xl overflow-hidden animate-slide-up">
-                        <div className="p-8 space-y-8">
-                            <div className="flex items-center gap-4 pb-6 border-b border-slate-100">
-                                <div className="p-3 bg-blue-600 rounded-2xl shadow-lg shadow-blue-600/20">
-                                    <User className="w-6 h-6 text-white" />
-                                </div>
-                                <div>
-                                    <h2 className="text-xl font-bold text-slate-900">Profile Information</h2>
-                                    <p className="text-sm text-slate-500 font-medium">Manage how you appear on the platform</p>
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-6">
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Full Name</label>
-                                    <input
-                                        type="text"
-                                        defaultValue="John Smith"
-                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600/10 focus:border-blue-600 transition-all"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Email Address</label>
-                                    <input
-                                        type="email"
-                                        defaultValue="john.smith@maxinsurance.com"
-                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600/10 focus:border-blue-600 transition-all"
-                                    />
-                                </div>
-                                <div className="space-y-2 col-span-2">
-                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Job Title</label>
-                                    <input
-                                        type="text"
-                                        defaultValue="Lead Administrator"
-                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600/10 focus:border-blue-600 transition-all"
-                                    />
-                                </div>
-                                <div className="space-y-2 col-span-2">
-                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Brief Biography</label>
-                                    <textarea
-                                        rows={4}
-                                        defaultValue="Lead administrator for the Max Insurance enterprise portal. Managing 120+ corporate accounts."
-                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600/10 focus:border-blue-600 transition-all resize-none"
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="pt-6 border-t border-slate-100 flex justify-end gap-3">
-                                <button className="px-6 py-2.5 rounded-xl text-xs font-bold text-slate-500 hover:bg-slate-100 transition-all">
-                                    Cancel
-                                </button>
-                                <button className="px-6 py-2.5 rounded-xl bg-[#0a1e3b] text-white text-xs font-bold shadow-lg shadow-blue-900/20 hover:scale-105 transition-all">
-                                    Save Changes
-                                </button>
-                            </div>
-                        </div>
+                    <div className="flex-1 bg-white/90 backdrop-blur-xl rounded-3xl border border-slate-300 shadow-xl overflow-hidden min-w-0">
+                        {renderContent()}
                     </div>
                 </div>
             </main>

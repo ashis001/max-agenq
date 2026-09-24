@@ -5,10 +5,56 @@
  * It uses the API key stored in the NEXT_PUBLIC_GOOGLE_TTS_API_KEY environment variable.
  */
 
+// Hard-wired defaults so deploy works even if env is missing
+const DEFAULT_ELEVENLABS_VOICE_ID = '21m00Tcm4TlvDq8ikWAM'; // Rachel - default ElevenLabs voice
+const DEFAULT_ELEVENLABS_MODEL = 'eleven_multilingual_v2';
+
 const GOOGLE_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_TTS_API_KEY;
-const ELEVENLABS_API_KEY = process.env.NEXT_PUBLIC_ELEVENLABS_API_KEY;
-const ELEVENLABS_VOICE_ID = process.env.NEXT_PUBLIC_ELEVENLABS_VOICE_ID || 'AXdMgz6evoL7OPd7eU12';
-const ELEVENLABS_MODEL = process.env.NEXT_PUBLIC_ELEVENLABS_MODEL || 'eleven_multilingual_v2';
+const ENV_ELEVENLABS_API_KEY = process.env.NEXT_PUBLIC_ELEVENLABS_API_KEY;
+const ENV_ELEVENLABS_VOICE_ID = process.env.NEXT_PUBLIC_ELEVENLABS_VOICE_ID || DEFAULT_ELEVENLABS_VOICE_ID;
+const ENV_ELEVENLABS_MODEL = process.env.NEXT_PUBLIC_ELEVENLABS_MODEL || DEFAULT_ELEVENLABS_MODEL;
+
+// Helpers to read user-provided ElevenLabs config from localStorage (client-side)
+export function getUserElevenLabsKey(): string | null {
+    if (typeof window === "undefined") return null;
+    try {
+        const v = localStorage.getItem("tts_elevenlabs_api_key");
+        return v && v.trim() ? v.trim() : null;
+    } catch { return null; }
+}
+export function getEffectiveElevenLabsKey(): string | null {
+    return getUserElevenLabsKey() || ENV_ELEVENLABS_API_KEY || null;
+}
+export function getEffectiveElevenLabsVoiceId(): string {
+    if (typeof window === "undefined") return ENV_ELEVENLABS_VOICE_ID;
+    try {
+        const v = localStorage.getItem("tts_elevenlabs_voice_id");
+        return v && v.trim() ? v.trim() : ENV_ELEVENLABS_VOICE_ID;
+    } catch { return ENV_ELEVENLABS_VOICE_ID; }
+}
+export function getEffectiveElevenLabsModel(): string {
+    if (typeof window === "undefined") return ENV_ELEVENLABS_MODEL;
+    try {
+        const v = localStorage.getItem("tts_elevenlabs_model");
+        return v && v.trim() ? v.trim() : ENV_ELEVENLABS_MODEL;
+    } catch { return ENV_ELEVENLABS_MODEL; }
+}
+export function hasUserElevenLabsKey(): boolean {
+    return !!getUserElevenLabsKey();
+}
+export function getActiveTTSProvider(): "elevenlabs" | "google" {
+    return hasUserElevenLabsKey() ? "elevenlabs" : "google";
+}
+// Detect if a voice name looks like a Google voice (e.g. en-US-Standard-C) vs ElevenLabs ID
+function isGoogleVoiceName(name: string): boolean {
+    return name.includes("en-") || name.includes("Standard") || name.includes("Wavenet") || name.includes("Neural");
+}
+function resolveElevenLabsVoiceId(optionsName?: string): string {
+    const effective = getEffectiveElevenLabsVoiceId();
+    if (!optionsName) return effective;
+    if (isGoogleVoiceName(optionsName)) return effective; // Don't pass Google voice to ElevenLabs
+    return optionsName;
+}
 
 // Chatterbox (Resemble AI) Fallback
 const RESEMBLE_API_KEY = process.env.NEXT_PUBLIC_RESEMBLE_API_KEY;
@@ -59,10 +105,15 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
 export async function synthesizeSpeech(text: string, options: TTSOptions = {}): Promise<{ audioContent: string, isElevenLabs: boolean }> {
     const cleanedText = stripMarkdown(text);
 
-    // 1. Try Google TTS first if API key is available
-    if (GOOGLE_API_KEY) {
-        const GOOGLE_API_URL = `https://texttospeech.googleapis.com/v1/text:synthesize?key=${GOOGLE_API_KEY}`;
+    const effectiveElevenLabsKey = getEffectiveElevenLabsKey();
+    const effectiveVoiceId = getEffectiveElevenLabsVoiceId();
+    const effectiveModel = getEffectiveElevenLabsModel();
+    const userHasKey = hasUserElevenLabsKey();
 
+    // Helper: try Google TTS
+    const tryGoogle = async (): Promise<{ audioContent: string, isElevenLabs: boolean } | null> => {
+        if (!GOOGLE_API_KEY) return null;
+        const GOOGLE_API_URL = `https://texttospeech.googleapis.com/v1/text:synthesize?key=${GOOGLE_API_KEY}`;
         const payload = {
             input: { text: cleanedText },
             voice: {
@@ -76,37 +127,41 @@ export async function synthesizeSpeech(text: string, options: TTSOptions = {}): 
                 pitch: options.pitch || 0,
             },
         };
-
         try {
             const response = await fetch(GOOGLE_API_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload),
             });
-
             if (response.ok) {
                 const data = await response.json();
-                return { audioContent: data.audioContent, isElevenLabs: false }; // Base64 string
+                return { audioContent: data.audioContent, isElevenLabs: false };
             }
-            console.warn('Google TTS failed, trying ElevenLabs fallback...');
+            console.warn('Google TTS failed, trying fallback...');
         } catch (error) {
             console.error('Google TTS error:', error);
         }
-    }
+        return null;
+    };
 
-    // 2. Try ElevenLabs if Google is unavailable or failed
-    if (ELEVENLABS_API_KEY) {
+    // Helper: try ElevenLabs with given effective key
+    const tryElevenLabs = async (): Promise<{ audioContent: string, isElevenLabs: boolean } | null> => {
+        if (!effectiveElevenLabsKey) return null;
         try {
-            const voiceId = options.name || ELEVENLABS_VOICE_ID;
+            const voiceId = resolveElevenLabsVoiceId(options.name) || effectiveVoiceId;
+            // Debug log to verify which provider is being attempted
+            if (typeof window !== "undefined") {
+                console.log(`[TTS] Attempting ElevenLabs | hasUserKey=${userHasKey} | voiceId=${voiceId} | key=${effectiveElevenLabsKey.slice(0, 8)}...`);
+            }
             const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'xi-api-key': ELEVENLABS_API_KEY,
+                    'xi-api-key': effectiveElevenLabsKey,
                 },
                 body: JSON.stringify({
                     text: cleanedText,
-                    model_id: ELEVENLABS_MODEL,
+                    model_id: effectiveModel,
                     voice_settings: {
                         stability: 0.75,
                         similarity_boost: 0.75,
@@ -115,7 +170,6 @@ export async function synthesizeSpeech(text: string, options: TTSOptions = {}): 
                     },
                 }),
             });
-
             if (response.ok) {
                 const arrayBuffer = await response.arrayBuffer();
                 const base64 = arrayBufferToBase64(arrayBuffer);
@@ -125,6 +179,38 @@ export async function synthesizeSpeech(text: string, options: TTSOptions = {}): 
             console.error('ElevenLabs API Error:', errorText);
         } catch (error) {
             console.error('ElevenLabs failed:', error);
+        }
+        return null;
+    };
+
+    // NEW LOGIC: If user provided ElevenLabs key via Settings -> prioritize ElevenLabs
+    //            If no user key -> prioritize Google (default behavior)
+    if (typeof window !== "undefined") {
+        console.log(`[TTS] synthesizeSpeech | userHasKey=${userHasKey} | effectiveKey=${effectiveElevenLabsKey ? effectiveElevenLabsKey.slice(0, 8) + "..." : "none"} | providerOrder=${userHasKey ? "ElevenLabs->Google" : "Google->ElevenLabs"}`);
+    }
+    if (userHasKey) {
+        const el = await tryElevenLabs();
+        if (el) {
+            if (typeof window !== "undefined") console.log("[TTS] ✓ Using ElevenLabs (user key)");
+            return el;
+        }
+        console.warn('[TTS] User ElevenLabs key failed (check key/voiceId/quota), falling back to Google...');
+        const g = await tryGoogle();
+        if (g) {
+            if (typeof window !== "undefined") console.warn("[TTS] Fallback: Using Google voice instead");
+            return g;
+        }
+    } else {
+        if (typeof window !== "undefined") console.log("[TTS] No user key — trying Google first");
+        const g = await tryGoogle();
+        if (g) {
+            if (typeof window !== "undefined") console.log("[TTS] ✓ Using Google voice (default)");
+            return g;
+        }
+        const el = await tryElevenLabs();
+        if (el) {
+            if (typeof window !== "undefined") console.log("[TTS] Fallback: Using ElevenLabs (env key)");
+            return el;
         }
     }
 
@@ -310,6 +396,27 @@ export function stopSpeech(): void {
 // twice — e.g. an effect re-running or the pause re-speak path).
 let lastSpokenText = "";
 let lastSpokenTs = 0;
+
+// Reset dedupe when provider changes so same greeting can be respoken with new voice
+if (typeof window !== "undefined") {
+    window.addEventListener("tts-settings-changed", () => {
+        lastSpokenText = "";
+        lastSpokenTs = 0;
+        // Also stop any current speech that used old voice
+        try { stopSpeech(); } catch {}
+    });
+    window.addEventListener("storage", (e) => {
+        if (e.key === "tts_elevenlabs_api_key") {
+            lastSpokenText = "";
+            lastSpokenTs = 0;
+        }
+    });
+}
+
+export function clearSpeechCache(): void {
+    lastSpokenText = "";
+    lastSpokenTs = 0;
+}
 
 export async function speakText(text: string, options: TTSOptions = {}): Promise<void> {
     if (globalAudioMuted) return;
