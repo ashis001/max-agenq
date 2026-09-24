@@ -4,6 +4,7 @@ import AgentUI from "@/components/AgentUi";
 import MaxGreeting from "@/components/MaxGreeting";
 import { AgenQAgent } from "@/components/AgenQAgent";
 import { useChat } from "@/context/ChatContext";
+import { useAgenQEnabled } from "@/hooks/useAgenQToggle";
 import { Sidebar } from "../corporate-customers/[id]/_components/Sidebar";
 import {
   Users,
@@ -78,6 +79,7 @@ const AnimatedGrid = () => (
 
 export default function DashboardPage() {
   const { toggleChat, openChat } = useChat();
+  const { enabled: isAgenQEnabled } = useAgenQEnabled();
   const [timeRange, setTimeRange] = useState<"Today" | "This Week" | "This Month">("Today");
   const [mounted, setMounted] = useState(false);
 
@@ -129,7 +131,7 @@ export default function DashboardPage() {
             <div className='flex items-center gap-3'>
               <button
                 onClick={() => openChat("Hi, I’m Nina. Your Assistant. I can help you with anything")}
-                className="flex items-center gap-2 px-5 py-2.5 bg-[#0a1e3b] text-white rounded-xl shadow-lg shadow-blue-900/20 hover:shadow-blue-900/40 transition-all hover:-translate-y-0.5 font-black text-[11px] uppercase tracking-wider invisible">
+                className={`flex items-center gap-2 px-5 py-2.5 bg-[#0a1e3b] text-white rounded-xl shadow-lg shadow-blue-900/20 hover:shadow-blue-900/40 transition-all hover:-translate-y-0.5 font-black text-[11px] uppercase tracking-wider ${isAgenQEnabled ? "invisible" : ""}`}>
                 <Sparkles className="w-4 h-4 text-blue-400" />
                 Ask Nina
               </button>

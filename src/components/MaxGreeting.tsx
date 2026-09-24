@@ -4,9 +4,11 @@ import React, { useState, useEffect } from "react";
 import { X, Sparkles } from "lucide-react";
 import { useChat } from "@/context/ChatContext";
 import { speakText } from "@/lib/google-tts";
+import { useAgenQEnabled } from "@/hooks/useAgenQToggle";
 
 export default function MaxGreeting() {
     const { openChat, isOpen, hasGreeted, setHasGreeted, isMuted, isWorkflowActive } = useChat();
+    const { enabled: isAgenQEnabled } = useAgenQEnabled();
     const [isVisible, setIsVisible] = useState(false);
 
     useEffect(() => {
@@ -112,7 +114,7 @@ export default function MaxGreeting() {
                             openChat("What would you like to do today? I can help you to onboard a new company, file a claim, or onboard a new policy provider.\n\nYou can talk to or you can type text here.");
                             setIsVisible(false);
                         }}
-                        className="group relative w-full overflow-hidden rounded-2xl bg-[#0a1e3b] px-6 py-4 transition-all duration-300 hover:bg-blue-900 hover:shadow-xl hover:shadow-blue-900/20 active:scale-[0.98] animate-Nina-pulse-gentle invisible"
+                        className={`group relative w-full overflow-hidden rounded-2xl bg-[#0a1e3b] px-6 py-4 transition-all duration-300 hover:bg-blue-900 hover:shadow-xl hover:shadow-blue-900/20 active:scale-[0.98] animate-Nina-pulse-gentle ${isAgenQEnabled ? "invisible" : ""}`}
                     >
                         <div className="relative z-10 flex items-center justify-center gap-2 text-white font-bold tracking-wide">
                             <Sparkles size={18} className="text-blue-400 group-hover:animate-spin-slow" />

@@ -3,6 +3,7 @@
 import Script from "next/script";
 import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
+import { useAgenQEnabled } from "@/hooks/useAgenQToggle";
 
 const AGENQ_AGENT_ID = "bcf6f3dd-569e-45be-ac55-64870e25aadd";
 const AGENQ_MOUNT_KEY = `agent-mount-state-${AGENQ_AGENT_ID}`;
@@ -19,8 +20,13 @@ const AGENQ_CONFIG = {
 export function AgenQAgent() {
   const mounted = useRef(false);
   const pathname = usePathname();
+  const { enabled } = useAgenQEnabled();
 
   useEffect(() => {
+    if (!enabled) {
+      mounted.current = false;
+      return;
+    }
     if (pathname === "/login") return;
 
     const timer = window.setInterval(() => {
@@ -40,9 +46,10 @@ export function AgenQAgent() {
     }, 150);
 
     return () => window.clearInterval(timer);
-  }, [pathname]);
+  }, [pathname, enabled]);
 
   if (pathname === "/login") return null;
+  if (!enabled) return null;
 
   return (
     <>

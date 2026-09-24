@@ -24,11 +24,19 @@ import {
     Info,
     ExternalLink,
     Settings as SettingsIcon,
+    Bot,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { speakText } from "@/lib/google-tts";
+import { useAgenQEnabled } from "@/hooks/useAgenQToggle";
 
 const SETTINGS_GROUPS = [
+    {
+        title: "Agent",
+        items: [
+            { id: "agent", label: "Agent Mode", description: "Switch between Nina & AgenQ SDK", icon: Bot },
+        ]
+    },
     {
         title: "Account",
         items: [
@@ -305,6 +313,95 @@ function VoiceSettingsPanel() {
     );
 }
 
+function AgentModePanel() {
+    const { enabled, setEnabled } = useAgenQEnabled();
+
+    return (
+        <div className="p-8 space-y-6 animate-slide-up">
+            {/* Header */}
+            <div className="flex items-center gap-4 pb-6 border-b border-slate-100">
+                <div className="p-3 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl shadow-lg shadow-blue-600/20">
+                    <Bot className="w-6 h-6 text-white" />
+                </div>
+                <div className="flex-1">
+                    <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                        Agent Mode
+                        {enabled ? (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-50 border border-blue-200 text-[10px] font-black tracking-widest text-blue-700 uppercase">
+                                <span className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" /> AgenQ SDK Active
+                            </span>
+                        ) : (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100 border border-slate-200 text-[10px] font-black tracking-widest text-slate-600 uppercase">
+                                <Sparkles className="w-3 h-3" /> Default Nina
+                            </span>
+                        )}
+                    </h2>
+                    <p className="text-sm text-slate-500 font-medium">Choose which assistant experience to use across the app</p>
+                </div>
+            </div>
+
+            {/* Info Banner */}
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl p-4 flex gap-3">
+                <div className="p-2 bg-blue-600 rounded-xl h-fit">
+                    <Info className="w-4 h-4 text-white" />
+                </div>
+                <div className="space-y-1">
+                    <p className="text-xs font-bold text-slate-900">How it works</p>
+                    <p className="text-xs text-slate-600 leading-relaxed">
+                        <span className="font-bold text-slate-900">Toggle OFF →</span> Shows the built-in <span className="font-bold">Ask Nina</span> button (top bar & greeting popup) which opens the default hardcoded right-side panel.
+                        <br />
+                        <span className="font-bold text-blue-700">Toggle ON →</span> Hides Ask Nina buttons and displays the real <span className="font-bold">AgenQ SDK floating agent</span> (bottom-right bubble on Dashboard / Home after login).
+                    </p>
+                </div>
+            </div>
+
+            {/* Toggle Row */}
+            <div className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-2xl p-5">
+                <div className="flex items-center gap-4">
+                    <div className={`p-2.5 rounded-xl border ${enabled ? "bg-blue-600 border-blue-600 text-white" : "bg-white border-slate-200 text-slate-500"}`}>
+                        <Bot className="w-5 h-5" />
+                    </div>
+                    <div>
+                        <p className="text-sm font-bold text-slate-900">Use AgenQ SDK Agent</p>
+                        <p className="text-xs text-slate-500 font-medium">
+                            {enabled ? "AgenQ SDK is visible • Ask Nina is hidden" : "Default Nina is visible • AgenQ SDK is hidden"}
+                        </p>
+                    </div>
+                </div>
+
+                <button
+                    type="button"
+                    role="switch"
+                    aria-checked={enabled}
+                    onClick={() => setEnabled(!enabled)}
+                    className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:ring-offset-2 ${enabled ? "bg-blue-600" : "bg-slate-300"}`}
+                >
+                    <span
+                        className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-md transition-transform duration-300 ${enabled ? "translate-x-6" : "translate-x-1"}`}
+                    />
+                </button>
+            </div>
+
+            <div className="flex items-center gap-2 text-xs font-medium">
+                <span className={`px-3 py-1.5 rounded-full border text-[11px] font-bold uppercase tracking-wider ${!enabled ? "bg-[#0a1e3b] text-white border-[#0a1e3b]" : "bg-white text-slate-500 border-slate-200"}`}>
+                    Default Nina
+                </span>
+                <span className="text-slate-400">—</span>
+                <span className={`px-3 py-1.5 rounded-full border text-[11px] font-bold uppercase tracking-wider ${enabled ? "bg-blue-600 text-white border-blue-600" : "bg-white text-slate-500 border-slate-200"}`}>
+                    AgenQ SDK
+                </span>
+                <span className="ml-auto text-[11px] text-slate-400 font-medium">
+                    Go to <span className="font-bold text-slate-700">Dashboard</span> after toggling to see the change
+                </span>
+            </div>
+
+            <p className="text-[11px] text-slate-400 font-medium leading-relaxed bg-slate-50 border border-slate-100 rounded-xl p-3">
+                <span className="font-bold text-slate-600">Note:</span> This toggle is stored in <span className="font-mono font-bold">localStorage</span> on this browser only. It takes effect instantly without page reload. No layout or sizes are changed — Ask Nina buttons are just hidden (invisible) when AgenQ is on.
+            </p>
+        </div>
+    );
+}
+
 function PlaceholderPanel({ id }: { id: string }) {
     const titles: Record<string, { title: string; desc: string }> = {
         security: { title: "Security & Password", desc: "Authentication and access control — coming soon" },
@@ -405,6 +502,7 @@ export default function SettingsPage() {
             );
         }
         if (activeTab === "voice") return <VoiceSettingsPanel />;
+        if (activeTab === "agent") return <AgentModePanel />;
         return <PlaceholderPanel id={activeTab} />;
     };
 
